@@ -17,7 +17,7 @@ func (p Ed25519Proof) Simulate() []byte {
 
 func ringSign(pair KeyPair, pks []PublicKey) {
 	// compute challenge size (depending on RSA moduli)
-	challenge_size := 128
+	challengeSize := 128
 
 	index := len(pks)
 	for i := range pks {
@@ -30,7 +30,7 @@ func ringSign(pair KeyPair, pks []PublicKey) {
 	challenges := make([]Challenge, len(pks))
 	for i, chal := range challenges {
 		if i != index {
-			chal.Random(challenge_size)
+			chal.Random(challengeSize)
 			println(i, len(chal.bytes))
 		}
 	}
@@ -39,7 +39,7 @@ func ringSign(pair KeyPair, pks []PublicKey) {
 	tx := NewTranscript()
 
 	// squeeze challenge
-	challenges[index] = tx.Challenge(challenge_size)
+	challenges[index] = tx.Challenge(challengeSize)
 
 	// compute challenge for active clause
 	// (challenges and tx.Challenge sums to 0)

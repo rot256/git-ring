@@ -111,35 +111,22 @@ func publicKeyFromStr(s string) (PublicKey, error) {
 	}, nil
 }
 
-func main() {
+func loadLocalEncKeyPairs() ([]EncKeyPair, error) {
+	var pairs []EncKeyPair
 
-	urls := []string{
-		"https://github.com/rot256.keys",
-	}
-
-	pk_keys, err := fetchAllKeys(urls)
-	if err != nil {
-		log.Fatalln(err)
-	}
-
-	log.Println(pk_keys)
-
+	// list files in ./ssh directory
 	home, err := os.UserHomeDir()
 	if err != nil {
-		panic(err)
+		return pairs, err
 	}
 
-	ssh_dir := filepath.Join(home, "/.ssh")
-
-	fmt.Println(ssh_dir)
-
-	key_files, err := ioutil.ReadDir(ssh_dir)
+	sshDir := filepath.Join(home, "/.ssh")
+	key_files, err := ioutil.ReadDir(sshDir)
 	if err != nil {
-		panic(err)
+		return pairs, err
 	}
 
-	var keys []EncKeyPair
-
+	// add all pairs of public/secret keys found in .ssh
 	for _, entry := range key_files {
 		// ignore directories
 		if entry.IsDir() {
@@ -152,34 +139,61 @@ func main() {
 		}
 
 		// read suspected private key
-		path_sk := filepath.Join(ssh_dir, entry.Name())
-		sk_pem, err := ioutil.ReadFile(path_sk)
+		pathSK := filepath.Join(sshDir, entry.Name())
+		skPEM, err := ioutil.ReadFile(pathSK)
 		if err != nil {
 			continue
 		}
 
 		// read corresponding public key
-		path_pk := filepath.Join(ssh_dir, entry.Name()+".pub")
-		pk_data, err := ioutil.ReadFile(path_pk)
+		pathPK := filepath.Join(sshDir, entry.Name()+".pub")
+		pk_data, err := ioutil.ReadFile(pathPK)
 		if err != nil {
 			continue
 		}
 
+		// parse public key
 		pk, err := publicKeyFromStr(string(pk_data))
 		if err != nil {
 			panic(err)
 		}
 
-		keys = append(
-			keys,
+		pairs = append(
+			pairs,
 			EncKeyPair{
-				sk_pem: string(sk_pem),
+				sk_pem: string(skPEM),
 				pk:     pk,
 			},
 		)
 	}
 
-	matches, err := findMatches(pk_keys, keys)
+	return pairs, nil
+}
+
+func main() {
+
+	urls := []string{
+		"https://github.com/rot256.keys",
+	}
+
+	// load the public keys of the ring members
+	//
+	// NOTE: we retrieve ALL keys for each user:
+	// this is to prevent privacy leaks where an old unused
+	// key is included as the only entry for that user.
+	pks, err := fetchAllKeys(urls)
+	if err != nil {
+		panic(err)
+	}
+
+	// load the (encrypted) secret keys on the local machine
+	pairs, err := loadLocalEncKeyPairs()
+	if err != nil {
+		panic(err)
+	}
+
+	// find matches between ring members and local keys
+	matches, err := findMatches(pks, pairs)
 	fmt.Println("Matching keys found:")
 	for i, pair := range matches {
 		fmt.Println("[", i, "] :", pair.pk.pk_ssh)
@@ -198,7 +212,7 @@ func main() {
 		}
 	}
 
-	//
+	// if not unencrypted pair was found, ask user to decrypt
 	if selected != nil {
 		fmt.Println("Using :", selected.pk.pk_ssh)
 	} else {
@@ -207,6 +221,5 @@ func main() {
 	}
 
 	// generate ring signature
-	ringSign(*selected, pk_keys)
-
+	ringSign(*selected, pks)
 }

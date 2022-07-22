@@ -3,13 +3,14 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"golang.org/x/crypto/ssh"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"golang.org/x/crypto/ssh"
 )
 
 type PublicKey struct {
@@ -29,6 +30,10 @@ type EncKeyPair struct {
 type KeyPair struct {
 	pk PublicKey
 	sk interface{}
+}
+
+func (pk1 PublicKey) Equals(pk2 PublicKey) bool {
+	return pk1.Id() == pk2.Id()
 }
 
 func fetchKeys(url string) ([]PublicKey, error) {

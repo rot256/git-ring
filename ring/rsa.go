@@ -1,4 +1,4 @@
-package main
+package ring
 
 // Assumes StrongRSA
 // Note: not technically a PoK (and therefore not a sigma protocol) for the secret key:
@@ -28,7 +28,7 @@ type rsaProof struct {
 }
 
 // generate an RSA challenge big enough to wrap the modulus (and any e)
-func rsaChallenge(pk *rsa.PublicKey, chal Challenge) *big.Int {
+func rsaChallenge(pk *rsa.PublicKey, chal challenge) *big.Int {
 	n := pk.N.BitLen() / 8
 	c := (&big.Int{}).SetBytes(chal.Take(n))
 	return c
@@ -55,7 +55,7 @@ func rsaPerm(pk *rsa.PublicKey, input *big.Int) *big.Int {
 	)
 }
 
-func (pf *rsaProof) Verify(pki interface{}, chal Challenge) bool {
+func (pf *rsaProof) Verify(pki interface{}, chal challenge) bool {
 	pk := pki.(*rsa.PublicKey)
 
 	// strict encoding: all numbers in \ZZ_N canonical
@@ -77,7 +77,7 @@ func (pf *rsaProof) Verify(pki interface{}, chal Challenge) bool {
 	return v1.Cmp(v2) == 0
 }
 
-func rsaSim(pk *rsa.PublicKey, chal Challenge) *rsaProof {
+func rsaSim(pk *rsa.PublicKey, chal challenge) *rsaProof {
 	var pf rsaProof
 
 	// sample challenge (offset to invert)
@@ -103,7 +103,7 @@ func rsaSim(pk *rsa.PublicKey, chal Challenge) *rsaProof {
 	return &pf
 }
 
-func (pf *rsaProof) Commit(tx *Transcript) {
+func (pf *rsaProof) Commit(tx *transcript) {
 	tx.Append([]byte("rsa proof"))
 	tx.Append(pf.A.Bytes())
 }
@@ -136,7 +136,7 @@ func proveRSA(sk *rsa.PrivateKey) *rsaProver {
 	return &rsaProver{pf: pf, sk: sk}
 }
 
-func (p *rsaProver) Finish(chal Challenge) {
+func (p *rsaProver) Finish(chal challenge) {
 	// sample challeng
 	c := rsaChallenge(&p.sk.PublicKey, chal)
 
@@ -153,6 +153,6 @@ func (p *rsaProver) Finish(chal Challenge) {
 	}
 }
 
-func (p *rsaProver) Pf() Proof {
+func (p *rsaProver) Pf() proof {
 	return &p.pf
 }

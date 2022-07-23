@@ -1,4 +1,4 @@
-package main
+package ring
 
 import (
 	"crypto/ed25519"
@@ -74,19 +74,19 @@ func (chal *Ed25519Challenge) Set(bytes []byte) {
 }
 
 func ed25519RandomScalar() *edwards25519.Scalar {
-	var r_bytes [64]byte
-	if _, err := rand.Read(r_bytes[:]); err != nil {
+	var rBytes [64]byte
+	if _, err := rand.Read(rBytes[:]); err != nil {
 		panic(err)
 	}
 
-	r, err := (&edwards25519.Scalar{}).SetUniformBytes(r_bytes[:])
+	r, err := (&edwards25519.Scalar{}).SetUniformBytes(rBytes[:])
 	if err != nil {
 		panic(err)
 	}
 	return r
 }
 
-func ed25519Challenge(chal Challenge) *edwards25519.Scalar {
+func ed25519Challenge(chal challenge) *edwards25519.Scalar {
 	// interpret challenge as 128-bit scalar
 	c, err := (&edwards25519.Scalar{}).SetCanonicalBytes(chal.TakeZero(16, 32))
 	if err != nil {
@@ -95,12 +95,12 @@ func ed25519Challenge(chal Challenge) *edwards25519.Scalar {
 	return c
 }
 
-func (pf ed25519Proof) Commit(tx *Transcript) {
+func (pf ed25519Proof) Commit(tx *transcript) {
 	tx.Append([]byte("ed25519 proof"))
 	tx.Append(pf.A.Bytes())
 }
 
-func (pf ed25519Proof) Verify(pk interface{}, chal Challenge) bool {
+func (pf ed25519Proof) Verify(pk interface{}, chal challenge) bool {
 	if pf.A == nil || pf.Z == nil {
 		return false
 	}
@@ -108,7 +108,7 @@ func (pf ed25519Proof) Verify(pk interface{}, chal Challenge) bool {
 	return A.Equal(pf.A) == 1
 }
 
-func (pf ed25519Proof) computeA(pk ed25519.PublicKey, chal Challenge) *edwards25519.Point {
+func (pf ed25519Proof) computeA(pk ed25519.PublicKey, chal challenge) *edwards25519.Point {
 	x, err := (&edwards25519.Point{}).SetBytes(pk)
 	if err != nil {
 		panic(err)
@@ -124,7 +124,7 @@ func (pf ed25519Proof) computeA(pk ed25519.PublicKey, chal Challenge) *edwards25
 	return (&edwards25519.Point{}).Add(l, r)
 }
 
-func ed25519Sim(pk ed25519.PublicKey, chal Challenge) *ed25519Proof {
+func ed25519Sim(pk ed25519.PublicKey, chal challenge) *ed25519Proof {
 	// [z] * g = [c] * x + a
 	// [z] * g - [c] * x = a
 
@@ -134,11 +134,11 @@ func ed25519Sim(pk ed25519.PublicKey, chal Challenge) *ed25519Proof {
 	return &pf
 }
 
-func (p ed25519Prover) Pf() Proof {
+func (p ed25519Prover) Pf() proof {
 	return &p.pf
 }
 
-func (p *ed25519Prover) Finish(chal Challenge) {
+func (p *ed25519Prover) Finish(chal challenge) {
 
 	s := ed25519SfromSK(p.sk)
 	c := ed25519Challenge(chal)

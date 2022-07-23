@@ -1,4 +1,4 @@
-package main
+package ring
 
 import (
 	"crypto/sha512"
@@ -8,22 +8,22 @@ import (
 	"golang.org/x/crypto/hkdf"
 )
 
-type Transcript struct {
+type transcript struct {
 	h hash.Hash
 }
 
-func NewTranscript() *Transcript {
-	return &Transcript{
+func NewTranscript() *transcript {
+	return &transcript{
 		h: sha512.New(),
 	}
 }
 
-func (tx *Transcript) Append(bs []byte) {
+func (tx *transcript) Append(bs []byte) {
 	binary.Write(tx.h, binary.LittleEndian, len(bs))
 	tx.h.Write(bs)
 }
 
-func (tx *Transcript) Challenge() Challenge {
+func (tx *transcript) Challenge() challenge {
 
 	// expand digest using HKDF
 	expand := hkdf.New(
@@ -33,7 +33,7 @@ func (tx *Transcript) Challenge() Challenge {
 		[]byte("transcript-hkdf"),
 	)
 
-	var chal Challenge
+	var chal challenge
 	if err := chal.Read(expand); err != nil {
 		panic(err)
 	}

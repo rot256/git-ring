@@ -70,11 +70,14 @@ func fetchAllKeys(urls []string) ([]PublicKey, error) {
 	var keys []PublicKey
 
 	for _, url := range urls {
-		new_keys, err := fetchKeys(url)
+		newKeys, err := fetchKeys(url)
 		if err != nil {
 			return keys, err
 		}
-		keys = append(keys, new_keys...)
+		if len(newKeys) == 0 {
+			log.Fatalln("One of the urls specified holds no keys!")
+		}
+		keys = append(keys, newKeys...)
 	}
 
 	return keys, nil
@@ -190,6 +193,11 @@ func main() {
 	pairs, err := loadLocalEncKeyPairs()
 	if err != nil {
 		panic(err)
+	}
+
+	fmt.Println("Keys in ring:")
+	for i, key := range pks {
+		fmt.Println("[", i, "]", key.pk_ssh)
 	}
 
 	// find matches between ring members and local keys

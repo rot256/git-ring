@@ -12,8 +12,8 @@ type Transcript struct {
 	h hash.Hash
 }
 
-func NewTranscript() Transcript {
-	return Transcript{
+func NewTranscript() *Transcript {
+	return &Transcript{
 		h: sha512.New(),
 	}
 }
@@ -23,16 +23,19 @@ func (tx *Transcript) Append(bs []byte) {
 	tx.h.Write(bs)
 }
 
-func (tx *Transcript) Challenge(n int) Challenge {
-	var chal Challenge
-	chal.bytes = make([]byte, n)
+func (tx *Transcript) Challenge() Challenge {
 
 	// expand digest using HKDF
-	expand := hkdf.New(sha512.New, tx.h.Sum([]byte{}), []byte{}, []byte{})
-	_, err := expand.Read(chal.bytes)
-	if err != nil {
+	expand := hkdf.New(
+		sha512.New,
+		tx.h.Sum([]byte{}),
+		[]byte{},
+		[]byte("transcript-hkdf"),
+	)
+
+	var chal Challenge
+	if err := chal.Read(expand); err != nil {
 		panic(err)
 	}
-
 	return chal
 }

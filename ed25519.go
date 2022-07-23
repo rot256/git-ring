@@ -4,6 +4,7 @@ import (
 	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/sha512"
+	"errors"
 
 	"filippo.io/edwards25519"
 )
@@ -24,22 +25,42 @@ func ed25519SfromSK(sk ed25519.PrivateKey) *edwards25519.Scalar {
 	return s
 }
 
-type Ed25519Prover struct {
+type ed25519Prover struct {
 	r  *edwards25519.Scalar
-	pf Ed25519Proof
+	pf ed25519Proof
 	sk ed25519.PrivateKey
 	pk ed25519.PublicKey
 }
 
-type Ed25519Proof struct {
+type ed25519Proof struct {
 	A *edwards25519.Point
 	Z *edwards25519.Scalar
 }
 
-func (pf Ed25519Proof) Marshal() []byte {
+func (pf ed25519Proof) Marshal() []byte {
 	out := pf.A.Bytes()
 	out = append(out, pf.Z.Bytes()...)
 	return out
+}
+
+func (pf *ed25519Proof) Unmarshal(b []byte) error {
+	if len(b) != 64 {
+		return errors.New("ed25519 proof should be 64 bytes")
+	}
+
+	A, err := (&edwards25519.Point{}).SetBytes(b[:32])
+	if err != nil {
+		return err
+	}
+
+	Z, err := (&edwards25519.Scalar{}).SetCanonicalBytes(b[32:])
+	if err != nil {
+		return err
+	}
+
+	pf.A = A
+	pf.Z = Z
+	return nil
 }
 
 type Ed25519Challenge struct {
@@ -74,17 +95,20 @@ func ed25519Challenge(chal Challenge) *edwards25519.Scalar {
 	return c
 }
 
-func (pf Ed25519Proof) Commit(tx *Transcript) {
+func (pf ed25519Proof) Commit(tx *Transcript) {
 	tx.Append([]byte("ed25519 proof"))
 	tx.Append(pf.A.Bytes())
 }
 
-func (pf Ed25519Proof) Verify(pk interface{}, chal Challenge) bool {
+func (pf ed25519Proof) Verify(pk interface{}, chal Challenge) bool {
+	if pf.A == nil || pf.Z == nil {
+		return false
+	}
 	A := pf.computeA(pk.(ed25519.PublicKey), chal)
 	return A.Equal(pf.A) == 1
 }
 
-func (pf Ed25519Proof) computeA(pk ed25519.PublicKey, chal Challenge) *edwards25519.Point {
+func (pf ed25519Proof) computeA(pk ed25519.PublicKey, chal Challenge) *edwards25519.Point {
 	x, err := (&edwards25519.Point{}).SetBytes(pk)
 	if err != nil {
 		panic(err)
@@ -100,21 +124,21 @@ func (pf Ed25519Proof) computeA(pk ed25519.PublicKey, chal Challenge) *edwards25
 	return (&edwards25519.Point{}).Add(l, r)
 }
 
-func ed25519Sim(pk ed25519.PublicKey, chal Challenge) *Ed25519Proof {
+func ed25519Sim(pk ed25519.PublicKey, chal Challenge) *ed25519Proof {
 	// [z] * g = [c] * x + a
 	// [z] * g - [c] * x = a
 
-	var pf Ed25519Proof
+	var pf ed25519Proof
 	pf.Z = ed25519RandomScalar()
 	pf.A = pf.computeA(pk, chal)
 	return &pf
 }
 
-func (p Ed25519Prover) Pf() Proof {
+func (p ed25519Prover) Pf() Proof {
 	return &p.pf
 }
 
-func (p *Ed25519Prover) Finish(chal Challenge) {
+func (p *ed25519Prover) Finish(chal Challenge) {
 
 	s := ed25519SfromSK(p.sk)
 	c := ed25519Challenge(chal)
@@ -128,18 +152,18 @@ func (p *Ed25519Prover) Finish(chal Challenge) {
 }
 
 // Schorr proof
-func ProveEd25519(sk ed25519.PrivateKey) *Ed25519Prover {
+func proveEd25519(sk ed25519.PrivateKey) *ed25519Prover {
 
 	// generate a commitment message
 
-	var pf Ed25519Proof
+	var pf ed25519Proof
 
 	g := edwards25519.NewGeneratorPoint()
 	r := ed25519RandomScalar()
 
 	pf.A = (&edwards25519.Point{}).ScalarMult(r, g)
 
-	return &Ed25519Prover{
+	return &ed25519Prover{
 		pk: sk.Public().(ed25519.PublicKey),
 		pf: pf,
 		sk: sk,

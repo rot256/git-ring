@@ -2,12 +2,14 @@ package main
 
 import (
 	"bufio"
+	"encoding/asn1"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"golang.org/x/crypto/ssh"
@@ -15,11 +17,11 @@ import (
 
 type PublicKey struct {
 	pk     ssh.PublicKey
-	pk_ssh string
+	pk_ssh string // this is only used for displaying (the generated signature does not depend on it)
 }
 
 func (p *PublicKey) Id() string {
-	return string(p.pk.Marshal())
+	return p.pk.Type() + "-" + ssh.FingerprintSHA256(p.pk)
 }
 
 type EncKeyPair struct {
@@ -36,6 +38,14 @@ func (pk1 PublicKey) Equals(pk2 PublicKey) bool {
 	return pk1.Id() == pk2.Id()
 }
 
+func (k *PublicKey) FP() string {
+	return ssh.FingerprintSHA256(k.pk)
+}
+
+func (k *PublicKey) Name() string {
+	return k.FP() + " (" + k.pk.Type() + ")"
+}
+
 func fetchKeys(url string) ([]PublicKey, error) {
 	var keys []PublicKey
 
@@ -46,7 +56,6 @@ func fetchKeys(url string) ([]PublicKey, error) {
 
 	scanner := bufio.NewScanner(resp.Body)
 	for scanner.Scan() {
-		fmt.Println(scanner.Text())
 		pk_ssh := strings.TrimSpace(scanner.Text())
 		pk, _, _, _, err := ssh.ParseAuthorizedKey([]byte(pk_ssh))
 		if err != nil {
@@ -173,10 +182,36 @@ func loadLocalEncKeyPairs() ([]EncKeyPair, error) {
 	return pairs, nil
 }
 
+// this is used to avoid leaking the order in which the keys were fetched
+func sortAndDedupKeys(pks []PublicKey) []PublicKey {
+
+	// deduplicate the keys
+	set := make(map[string]PublicKey)
+	for _, pk := range pks {
+		set[pk.Id()] = pk
+	}
+
+	// sort id's
+	sorted := make([]string, 0)
+	for k, _ := range set {
+		sorted = append(sorted, k)
+	}
+	sort.Strings(sorted)
+
+	// retrieve keys in sorted order
+	pksNew := make([]PublicKey, 0, len(set))
+	for _, k := range sorted {
+		pksNew = append(pksNew, set[k])
+	}
+	return pksNew
+}
+
 func main() {
 
 	urls := []string{
 		"https://github.com/rot256.keys",
+		"https://github.com/grittygrease.keys",
+		"https://github.com/zx2c4.keys",
 	}
 
 	// load the public keys of the ring members
@@ -189,22 +224,26 @@ func main() {
 		panic(err)
 	}
 
+	// sort and deduplicate fetched keys
+	// (to avoid leaking the order of inclusion)
+	pks = sortAndDedupKeys(pks)
+
 	// load the (encrypted) secret keys on the local machine
 	pairs, err := loadLocalEncKeyPairs()
 	if err != nil {
 		panic(err)
 	}
 
-	fmt.Println("Keys in ring:")
+	fmt.Println("Keys In Ring:")
 	for i, key := range pks {
-		fmt.Println("[", i, "]", key.pk_ssh)
+		fmt.Println("[", i, "]", key.Name())
 	}
 
 	// find matches between ring members and local keys
 	matches, err := findMatches(pks, pairs)
-	fmt.Println("Matching keys found:")
+	fmt.Println("Matching Keys Found:")
 	for i, pair := range matches {
-		fmt.Println("[", i, "] :", pair.pk.pk_ssh)
+		fmt.Println("[", i, "] :", pair.pk.Name())
 	}
 
 	// attempt to use unecrypted secret key
@@ -222,12 +261,18 @@ func main() {
 
 	// if not unencrypted pair was found, ask user to decrypt
 	if selected != nil {
-		fmt.Println("Using :", selected.pk.pk_ssh)
+		fmt.Println("Using :", selected.pk.Name())
 	} else {
 		// TODO select and decrypt
 		panic(nil)
 	}
 
 	// generate ring signature
-	ringSign(*selected, pks)
+	sig := ringSign(*selected, pks)
+
+	data, err := asn1.Marshal(sig)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(len(data))
 }

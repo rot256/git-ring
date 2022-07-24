@@ -22,8 +22,9 @@ var signCmd = &cobra.Command{
 
 		sigPath, err := cmd.Flags().GetString(optSig)
 
-		pks := loadPublicKeys(cmd)
-		fmt.Println(len(pks), "total keys in ring")
+		allowEmpty, err := cmd.Flags().GetBool(optAllowEmpty)
+
+		pks := loadPublicKeys(cmd, allowEmpty)
 
 		// load the (encrypted) secret keys on the local machine
 		pairs, err := LoadLocalEncKeyPairs()

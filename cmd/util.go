@@ -88,7 +88,7 @@ func loadGithubUser(indent string, name string) []ring.PublicKey {
 	return keys
 }
 
-func loadPublicKeys(cmd *cobra.Command) []ring.PublicKey {
+func loadPublicKeys(cmd *cobra.Command, allowEmpty bool) []ring.PublicKey {
 	var pks []ring.PublicKey
 
 	zeroKeys := false
@@ -147,7 +147,6 @@ func loadPublicKeys(cmd *cobra.Command) []ring.PublicKey {
 
 	// read local keys
 
-	allowEmpty, _ := cmd.Flags().GetBool(optAllowEmpty)
 	if zeroKeys && !allowEmpty {
 		printError("Obtained zero keys from one/more sources:")
 		printError("  Aborting to avoid excluding a source from the ring")
@@ -156,7 +155,9 @@ func loadPublicKeys(cmd *cobra.Command) []ring.PublicKey {
 	}
 
 	// sort and deuplicate the keys
-	return sortAndDedupKeys(pks)
+	pks = sortAndDedupKeys(pks)
+	fmt.Println(len(pks), "total keys in ring")
+	return pks
 }
 
 // this is used to avoid leaking the order in which the keys were fetched

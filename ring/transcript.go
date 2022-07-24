@@ -19,7 +19,10 @@ func NewTranscript() *transcript {
 }
 
 func (tx *transcript) Append(bs []byte) {
-	binary.Write(tx.h, binary.LittleEndian, len(bs))
+	err := binary.Write(tx.h, binary.LittleEndian, uint64(len(bs)))
+	if err != nil {
+		panic(err)
+	}
 	tx.h.Write(bs)
 }
 

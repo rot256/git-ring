@@ -30,6 +30,10 @@ func githubOrganizationUsers(name string) (bool, []string, error) {
 		url := fmt.Sprintf("https://api.github.com/orgs/%s/members?page=%d&per_page=%d", name, n, membersPerPage)
 		resp, err := http.Get(url)
 
+		if err != nil {
+			return false, []string{}, err
+		}
+
 		// stop if org not found
 		if resp.StatusCode == http.StatusNotFound {
 			return false, []string{}, nil
@@ -174,7 +178,6 @@ func loadPublicKeys(cmd *cobra.Command) (int, int, []ring.PublicKey) {
 			for _, member := range members {
 				addKeys(loadGithubUser(indent+indent, member))
 			}
-			fmt.Println()
 		} else {
 			addKeys(loadGithubUser(indent, name))
 		}
@@ -209,7 +212,7 @@ func sortAndDedupKeys(pks []ring.PublicKey) []ring.PublicKey {
 
 	// sort id's
 	sorted := make([]string, 0)
-	for k, _ := range set {
+	for k := range set {
 		sorted = append(sorted, k)
 	}
 	sort.Strings(sorted)

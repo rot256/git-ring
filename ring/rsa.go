@@ -59,11 +59,11 @@ func (pf *rsaProof) Verify(pki interface{}, chal challenge) error {
 
 	// strict encoding: all numbers in \ZZ_N canonical
 	if pk.N.Cmp(pf.A) != 1 {
-		return errors.New("A is not canonically encoded in ZZ_N")
+		return errors.New("field A is not canonically encoded in ZZ_N")
 	}
 
 	if pk.N.Cmp(pf.Z) != 1 {
-		return errors.New("Z is not canonically encoded in ZZ_N")
+		return errors.New("field Z is not canonically encoded in ZZ_N")
 	}
 
 	// compute challenge
@@ -133,7 +133,7 @@ func (pf *rsaProof) Marshal() []byte {
 	return bytes
 }
 
-func proveRSA(sk *rsa.PrivateKey) *rsaProver {
+func rsaProve(sk *rsa.PrivateKey) *rsaProver {
 	// just sample a random image
 	var pf rsaProof
 	r := randomPreimage(&sk.PublicKey)

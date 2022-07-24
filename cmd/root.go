@@ -7,11 +7,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var cfgSig string
-var cfgMsg string
-var cfgGithub string
-var cfgGitlab string
-
 const optVerbose = "verbose"
 const optMsg = "msg"
 const optSig = "sig"
@@ -50,7 +45,7 @@ func init() {
 	verifyCmd.MarkPersistentFlagRequired(optSig)
 }
 
-func Execute() {
+func Execute() { //nolint:golint
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)

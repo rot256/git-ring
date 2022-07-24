@@ -2,14 +2,10 @@ package ring
 
 import (
 	"crypto/ecdsa"
-	"crypto/ed25519"
 	"crypto/rand"
-	"crypto/sha512"
 	"encoding/asn1"
 	"errors"
 	"math/big"
-
-	"filippo.io/edwards25519"
 )
 
 // almost forgot how much the ECC fucking sucks in Go...
@@ -26,26 +22,6 @@ type ecdsaProof struct {
 	Ax *big.Int
 	Ay *big.Int
 	Z  *big.Int
-}
-
-type ecdsaChallenge struct {
-	c edwards25519.Scalar
-}
-
-func ecdsafromSK(sk ed25519.PrivateKey) *edwards25519.Scalar {
-	// derieve secret from ed25519 secret key
-	if l := len(sk); l != ed25519.PrivateKeySize {
-		panic("ed25519: bad private key length")
-	}
-
-	seed := sk[:ed25519.SeedSize]
-
-	h := sha512.Sum512(seed)
-	s, err := edwards25519.NewScalar().SetBytesWithClamping(h[:32])
-	if err != nil {
-		panic("ed25519: internal error: setting scalar failed")
-	}
-	return s
 }
 
 func (pf ecdsaProof) Marshal() []byte {
@@ -71,12 +47,6 @@ func (pf *ecdsaProof) Unmarshal(b []byte) error {
 		return errors.New("ECDSA proof missing Z scalar")
 	}
 	return nil
-}
-
-func (chal *ecdsaChallenge) Set(bytes []byte) {
-	var c_bytes [32]byte
-	copy(c_bytes[:], bytes[:16])
-	chal.c.SetCanonicalBytes(c_bytes[:])
 }
 
 func ecdsaRandomScalar(pk *ecdsa.PublicKey) *big.Int {
@@ -106,11 +76,11 @@ func (pf ecdsaProof) Verify(key interface{}, chal challenge) error {
 	pk := key.(*ecdsa.PublicKey)
 
 	if pf.Ax == nil || pf.Ay == nil || !pk.Curve.IsOnCurve(pf.Ax, pf.Ay) {
-		return errors.New("Invalid A point")
+		return errors.New("invalid A point")
 	}
 
 	if pf.Z == nil || pk.Curve.Params().N.Cmp(pf.Z) != 1 {
-		return errors.New("Invalid Z scalar")
+		return errors.New("invalid Z scalar")
 	}
 
 	c := ecdsaNewChallenge(pk, chal)
@@ -120,7 +90,7 @@ func (pf ecdsaProof) Verify(key interface{}, chal challenge) error {
 	lx, ly := pk.Curve.Add(rx, ry, pf.Ax, pf.Ay)
 
 	if lx.Cmp(zx) != 0 || ly.Cmp(zy) != 0 {
-		return errors.New("Failed final check: [c] * pk + A != [z] * G")
+		return errors.New("failed final check: [c] * pk + A != [z] * G")
 	}
 
 	return nil

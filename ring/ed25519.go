@@ -21,10 +21,6 @@ type ed25519Proof struct {
 	Z *edwards25519.Scalar
 }
 
-type ed25519Challenge struct {
-	c edwards25519.Scalar
-}
-
 func ed25519SfromSK(sk ed25519.PrivateKey) *edwards25519.Scalar {
 	// derieve secret from ed25519 secret key
 	if l := len(sk); l != ed25519.PrivateKeySize {
@@ -96,11 +92,11 @@ func (pf ed25519Proof) Commit(tx *transcript) {
 
 func (pf ed25519Proof) Verify(pk interface{}, chal challenge) error {
 	if pf.A == nil || pf.Z == nil {
-		return errors.New("Incomplete proof")
+		return errors.New("incomplete proof")
 	}
 	A := pf.computeA(pk.(ed25519.PublicKey), chal)
 	if A.Equal(pf.A) != 1 {
-		return errors.New("Recompute commitment does not match")
+		return errors.New("recompute commitment does not match")
 	}
 	return nil
 }
@@ -156,7 +152,7 @@ func (p *ed25519Prover) Finish(chal challenge) {
 }
 
 // Schorr proof
-func proveEd25519(sk ed25519.PrivateKey) *ed25519Prover {
+func ed25519Prove(sk ed25519.PrivateKey) *ed25519Prover {
 
 	// generate a commitment message
 

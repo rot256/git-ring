@@ -20,8 +20,12 @@ var signCmd = &cobra.Command{
 			panic(err)
 		}
 
-		// open the file (better to fail before touching the network)
 		sigPath, err := cmd.Flags().GetString(optSig)
+		if err != nil {
+			panic(err)
+		}
+
+		// open the file (better to fail before touching the network)
 		sigFile, err := os.Create(sigPath)
 		if err != nil {
 			exitError("Failed to create signature file:", err)
@@ -32,6 +36,11 @@ var signCmd = &cobra.Command{
 
 		// check if all entities covered
 		allowEmpty, err := cmd.Flags().GetBool(optAllowEmpty)
+
+		if err != nil {
+			panic(err)
+		}
+
 		if sourcesTotal != sourcesWithKeys && !allowEmpty {
 			printError("Error: Obtained zero keys from one/more sources:")
 			printError("THEY (SHOWN IN YELLOW) WILL NOT BE INCLUDED IN THE RING.")
@@ -102,7 +111,7 @@ var signCmd = &cobra.Command{
 
 		fmt.Print(colorBlue)
 		fmt.Println("Signature successfully generated")
-		fmt.Println("Saved in:", sigPath)
+		fmt.Printf("Saved in: %s (%d bytes)\n", sigPath, len(data))
 		fmt.Print(colorReset)
 	},
 }

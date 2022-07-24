@@ -13,7 +13,7 @@ var colorYellow = "\033[33m"
 var colorBlue = "\033[34m"
 var colorPurple = "\033[35m"
 var colorCyan = "\033[36m"
-var colorWhite = "\033[37m"
+var colorWhite = "\033[37m" //lint:ignore U1000 for completeness
 
 func init() {
 	if runtime.GOOS == "windows" {

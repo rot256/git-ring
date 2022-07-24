@@ -13,7 +13,7 @@ import (
 // sucks to have a weak type-system I guess...
 
 type ecdsaProver struct {
-	sk ecdsa.PrivateKey
+	sk *ecdsa.PrivateKey
 	pf ecdsaProof
 	r  *big.Int
 }
@@ -141,13 +141,13 @@ func (p *ecdsaProver) Finish(chal challenge) {
 	// to protect against mistakes erase the blinding
 	p.r = nil
 
-	if err := p.pf.Verify(p.sk.PublicKey, chal); err != nil {
+	if err := p.pf.Verify(&p.sk.PublicKey, chal); err != nil {
 		panic(err)
 	}
 }
 
 // Schorr proof
-func ecdsaProve(sk ecdsa.PrivateKey) *ecdsaProver {
+func ecdsaProve(sk *ecdsa.PrivateKey) *ecdsaProver {
 	// sample random blinding
 	var p ecdsaProver
 	p.r = ecdsaRandomScalar(&sk.PublicKey)

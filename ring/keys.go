@@ -91,7 +91,7 @@ func toCryptoPublicKey(pk PublicKey) crypto.PublicKey {
 		var inner ed25519.PublicKey
 		ri := reflect.ValueOf(&inner).Elem()
 		ri.Set(rf)
-		return &inner
+		return inner
 
 	default:
 		panic(errors.New("unknown key type"))

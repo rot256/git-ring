@@ -3,9 +3,8 @@ package ring
 import (
 	"crypto/sha512"
 	"encoding/binary"
+	"errors"
 	"hash"
-
-	"golang.org/x/crypto/hkdf"
 )
 
 type transcript struct {
@@ -27,18 +26,15 @@ func (tx *transcript) Append(bs []byte) {
 }
 
 func (tx *transcript) Challenge() challenge {
-
-	// expand digest using HKDF
-	expand := hkdf.New(
-		sha512.New,
-		tx.h.Sum([]byte{}),
-		[]byte{},
-		[]byte("transcript-hkdf"),
-	)
-
-	var chal challenge
-	if err := chal.Read(expand); err != nil {
-		panic(err)
+	// compute digest
+	hsh := tx.h.Sum([]byte{})
+	if len(hsh) < challengeSize {
+		panic(errors.New("challenge is bigger than digest"))
 	}
+
+	// copy hash prefix into challenge
+	var chal challenge
+	chal.bytes = make([]byte, challengeSize)
+	copy(chal.bytes, hsh)
 	return chal
 }

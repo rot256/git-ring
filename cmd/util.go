@@ -35,6 +35,11 @@ func githubOrganizationUsers(name string) (bool, []string, error) {
 			return false, []string{}, nil
 		}
 
+		// check for error
+		if resp.StatusCode != http.StatusOK {
+			return false, []string{}, fmt.Errorf("HTTP request failed with: %s", resp.Status)
+		}
+
 		// read response
 		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
@@ -63,12 +68,14 @@ func githubOrganizationUsers(name string) (bool, []string, error) {
 
 func verbose(cmd *cobra.Command, s ...interface{}) {
 	if enabled, _ := cmd.Flags().GetBool(optVerbose); enabled {
-		fmt.Println(s...)
+		fmt.Print(s...)
 	}
 }
 
 func printError(s ...interface{}) {
+	fmt.Print(colorRed)
 	fmt.Println(s...)
+	fmt.Print(colorReset)
 }
 
 func exitError(s ...interface{}) {
@@ -78,86 +85,118 @@ func exitError(s ...interface{}) {
 	os.Exit(1)
 }
 
+func colorWarnBool(b bool) {
+	if b {
+		fmt.Print(colorGreen)
+	} else {
+		fmt.Print(colorYellow)
+	}
+}
+
 func loadGithubUser(indent string, name string) []ring.PublicKey {
 	url := "https://github.com/" + name + ".keys"
 	keys, err := fetchKeys(url)
 	if err != nil {
 		exitError("Failed to fetch keys for Github user", name, "err:", err)
 	}
-	fmt.Println(indent, len(keys), "keys :", name, "@ Github")
+
+	colorWarnBool(len(keys) > 0)
+	fmt.Printf("%s%s (%d keys)\n", indent, name, len(keys))
+	fmt.Print(colorReset)
+
 	return keys
 }
 
-func loadPublicKeys(cmd *cobra.Command, allowEmpty bool) []ring.PublicKey {
-	var pks []ring.PublicKey
+func loadGitlabUser(indent string, name string) []ring.PublicKey {
+	url := "https://gitlab.com/" + name + ".keys"
+	keys, err := fetchKeys(url)
+	if err != nil {
+		exitError("Failed to fetch keys for Gitlab user", name, "err:", err)
+	}
 
-	zeroKeys := false
+	colorWarnBool(len(keys) > 0)
+	fmt.Println(" ", len(keys), "keys :", name)
+	fmt.Print(colorReset)
 
+	return keys
+}
+
+func loadUrl(indent string, url string) []ring.PublicKey {
+	keys, err := fetchKeys(url)
+	if err != nil {
+		exitError("Failed to fetch keys from url:", url)
+	}
+
+	colorWarnBool(len(keys) > 0)
+	fmt.Println(" ", len(keys), "keys :", url)
+	fmt.Print(colorReset)
+
+	return keys
+}
+
+func loadPublicKeys(cmd *cobra.Command) (int, int, []ring.PublicKey) {
 	//
 
-	fmt.Println("Loading keys in ring:")
+	var sourcesTotal int
+	var sourcesWithKeys int
+	var pks []ring.PublicKey
+
+	fmt.Println("Loading Keys from Different Entities:")
+
+	addKeys := func(keys []ring.PublicKey) {
+		if len(keys) > 0 {
+			sourcesWithKeys += 1
+		}
+		sourcesTotal += 1
+		pks = append(pks, keys...)
+	}
 
 	// load github keys
+
 	githubNames, _ := cmd.Flags().GetStringArray(optGithub)
+	if len(githubNames) >= 0 {
+		fmt.Print(colorCyan)
+		fmt.Println("Github:")
+		fmt.Print(colorReset)
+	}
+
 	for _, name := range githubNames {
 		isOrg, members, err := githubOrganizationUsers(name)
 		if err != nil {
-			exitError("Failed check for Github org:", err)
+			printError("Failed check for Github org:")
+			exitError(err)
 		}
 
 		if isOrg {
-			fmt.Println("  Github Org:", name)
+			fmt.Print(colorPurple)
+			fmt.Println(indent+"Organization:", name)
+			fmt.Print(colorReset)
 			for _, member := range members {
-				keys := loadGithubUser("   ", member)
-				zeroKeys = zeroKeys || len(keys) == 0
-				pks = append(pks, keys...)
+				addKeys(loadGithubUser(indent+indent, member))
 			}
+			fmt.Println()
 		} else {
-			keys := loadGithubUser(" ", name)
-			fmt.Println(" ", len(keys), "keys :", name, "@ Github")
-			zeroKeys = zeroKeys || len(keys) == 0
-			pks = append(pks, keys...)
+			addKeys(loadGithubUser(indent, name))
 		}
 	}
 
 	// load gitlab keys
 	gitlabNames, _ := cmd.Flags().GetStringArray(optGitlab)
 	for _, name := range gitlabNames {
-		url := "https://gitlab.com/" + name + ".keys"
-		keys, err := fetchKeys(url)
-		if err != nil {
-			exitError("Failed to fetch keys for Gitlab user", name, "err:", err)
-		}
-		fmt.Println(" ", len(keys), "keys :", name, "@ Gitlab")
-		zeroKeys = zeroKeys || len(keys) == 0
-		pks = append(pks, keys...)
+		addKeys(loadGitlabUser(" ", name))
 	}
 
 	// fetch keys from other urls
 	urls, _ := cmd.Flags().GetStringArray(optUrls)
 	for _, url := range urls {
-		keys, err := fetchKeys(url)
-		if err != nil {
-			exitError("Failed to fetch keys for Gitlab user", url, "err:", err)
-		}
-		fmt.Println(" ", len(keys), "keys :", url)
-		zeroKeys = zeroKeys || len(keys) == 0
-		pks = append(pks, keys...)
-	}
-
-	// read local keys
-
-	if zeroKeys && !allowEmpty {
-		printError("Obtained zero keys from one/more sources:")
-		printError("  Aborting to avoid excluding a source from the ring")
-		printError("  If you want to allow this use --" + optAllowEmpty)
-		exitError()
+		addKeys(loadUrl(" ", url))
 	}
 
 	// sort and deuplicate the keys
 	pks = sortAndDedupKeys(pks)
-	fmt.Println(len(pks), "total keys in ring")
-	return pks
+	fmt.Println(len(pks), "Keys in the ring.")
+	fmt.Println("Covering:", sourcesWithKeys, "/", sourcesTotal, "entities")
+	return sourcesTotal, sourcesWithKeys, pks
 }
 
 // this is used to avoid leaking the order in which the keys were fetched
@@ -226,7 +265,7 @@ func FetchAllKeys(urls []string) ([]ring.PublicKey, error) {
 	return sortAndDedupKeys(keys), nil
 }
 
-func FindMatches(pks []ring.PublicKey, pairs []ring.EncKeyPair) ([]ring.EncKeyPair, error) {
+func FindMatches(pks []ring.PublicKey, pairs []ring.EncKeyPair) []ring.EncKeyPair {
 	// create lookup
 	index := make(map[string]bool)
 	for _, pk := range pks {
@@ -241,7 +280,7 @@ func FindMatches(pks []ring.PublicKey, pairs []ring.EncKeyPair) ([]ring.EncKeyPa
 		}
 	}
 
-	return matches, nil
+	return matches
 }
 
 func LoadLocalEncKeyPairs() ([]ring.EncKeyPair, error) {

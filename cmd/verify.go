@@ -23,31 +23,32 @@ var verifyCmd = &cobra.Command{
 
 		sigFile, err := os.Open(sigPath)
 		if err != nil {
-			printError("Failed to open signature file:", err)
+			exitError("Failed to open signature file:", err)
 		}
 
 		sigData, err := ioutil.ReadAll(sigFile)
 		if err != nil {
-			printError("Failed to read signature file:", err)
+			exitError("Failed to read signature file:", err)
 		}
 
 		var sig ring.Signature
 		rest, err := asn1.Unmarshal(sigData, &sig)
 		if err != nil {
-			printError("Failed to deserialize signature:", err)
+			exitError("Failed to deserialize signature:", err)
 		}
 		if len(rest) != 0 {
-			printError("Signature is followed by junk")
+			exitError("Signature is followed by junk")
 		}
 
-		pks := loadPublicKeys(cmd, true)
+		_, _, pks := loadPublicKeys(cmd)
 
 		msg, err := sig.Verify(pks)
 		if err != nil {
 			printError("Signature is not valid:")
+			exitError(err)
 		}
 
-		fmt.Println("msg:", msg)
-
+		fmt.Println("msg:")
+		fmt.Println(string(msg))
 	},
 }

@@ -20,11 +20,25 @@ var signCmd = &cobra.Command{
 			panic(err)
 		}
 
+		// open the file (better to fail before touching the network)
 		sigPath, err := cmd.Flags().GetString(optSig)
+		sigFile, err := os.Create(sigPath)
+		if err != nil {
+			exitError("Failed to create signature file:", err)
+		}
 
+		// load public keys from different sources
+		sourcesTotal, sourcesWithKeys, pks := loadPublicKeys(cmd)
+
+		// check if all entities covered
 		allowEmpty, err := cmd.Flags().GetBool(optAllowEmpty)
-
-		pks := loadPublicKeys(cmd, allowEmpty)
+		if sourcesTotal != sourcesWithKeys && !allowEmpty {
+			printError("Error: Obtained zero keys from one/more sources:")
+			printError("THEY (SHOWN IN YELLOW) WILL NOT BE INCLUDED IN THE RING.")
+			printError("Aborting to avoid accidentially excluding an entity from the ring.")
+			printError("If you want to allow this use --" + optAllowEmpty)
+			exitError()
+		}
 
 		// load the (encrypted) secret keys on the local machine
 		pairs, err := LoadLocalEncKeyPairs()
@@ -33,9 +47,12 @@ var signCmd = &cobra.Command{
 		}
 
 		// find matches between ring members and local keys
-		matches, err := FindMatches(pks, pairs)
+		matches := FindMatches(pks, pairs)
+		if len(matches) == 0 {
+			exitError("Error: No matching keys found:\nDid you remember to include yourself in the ring?")
+		}
 
-		verbose(cmd, "SSH lkeys in ring (+ indicates available for signing):")
+		verbose(cmd, "SSH keys in ring (available keys marked with +):\n")
 		for i, key := range pks {
 			match := false
 			for _, m := range matches {
@@ -44,9 +61,11 @@ var signCmd = &cobra.Command{
 				}
 			}
 			if match {
-				verbose(cmd, fmt.Sprintf(" + [ %03d ] : %s", i, key.Name()))
+				verbose(cmd, colorBlue)
+				verbose(cmd, fmt.Sprintf(" + [ %03d ] : %s\n", i, key.Name()))
+				verbose(cmd, colorReset)
 			} else {
-				verbose(cmd, fmt.Sprintf("   [ %03d ] : %s", i, key.Name()))
+				verbose(cmd, fmt.Sprintf("   [ %03d ] : %s\n", i, key.Name()))
 			}
 		}
 
@@ -64,28 +83,26 @@ var signCmd = &cobra.Command{
 		}
 
 		// if not unencrypted pair was found, ask user to decrypt
-		if selected != nil {
-			fmt.Println("Using :", selected.PK.Name())
-		} else {
+		if selected == nil {
 			// TODO select and decrypt
-			panic(nil)
+			exitError("Decrypt key")
 		}
 
 		// generate ring signature
 		sig := ring.Sign(*selected, pks, []byte(msg))
 
+		// serialize signature to file
 		data, err := asn1.Marshal(sig)
 		if err != nil {
 			panic(err)
 		}
-
-		sigFile, err := os.Create(sigPath)
-		if err != nil {
-			exitError("Failed to create signature file:", err)
-		}
-
 		if _, err := sigFile.Write(data); err != nil {
 			exitError("Failed to write signature to disk:", err)
 		}
+
+		fmt.Print(colorBlue)
+		fmt.Println("Signature successfully generated")
+		fmt.Println("Saved in:", sigPath)
+		fmt.Print(colorReset)
 	},
 }

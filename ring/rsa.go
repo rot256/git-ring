@@ -13,7 +13,6 @@ import (
 	"crypto/rsa"
 	"encoding/asn1"
 	"errors"
-	"fmt"
 	"math/big"
 )
 
@@ -55,13 +54,16 @@ func rsaPerm(pk *rsa.PublicKey, input *big.Int) *big.Int {
 	)
 }
 
-func (pf *rsaProof) Verify(pki interface{}, chal challenge) bool {
+func (pf *rsaProof) Verify(pki interface{}, chal challenge) error {
 	pk := pki.(*rsa.PublicKey)
 
 	// strict encoding: all numbers in \ZZ_N canonical
-	if pk.N.Cmp(pf.A) != 1 || pk.N.Cmp(pf.Z) != 1 {
-		fmt.Println(pk.N, pf.A)
-		return false
+	if pk.N.Cmp(pf.A) != 1 {
+		return errors.New("A is not canonically encoded in ZZ_N")
+	}
+
+	if pk.N.Cmp(pf.Z) != 1 {
+		return errors.New("Z is not canonically encoded in ZZ_N")
 	}
 
 	// compute challenge
@@ -74,7 +76,11 @@ func (pf *rsaProof) Verify(pki interface{}, chal challenge) bool {
 	v2 := (&big.Int{}).Mul(pf.A, c)
 	v2 = v2.Mod(v2, pk.N)
 
-	return v1.Cmp(v2) == 0
+	if v1.Cmp(v2) != 0 {
+		return errors.New("Challenge is not inverted correctly")
+	}
+
+	return nil
 }
 
 func rsaSim(pk *rsa.PublicKey, chal challenge) *rsaProof {
@@ -96,8 +102,8 @@ func rsaSim(pk *rsa.PublicKey, chal challenge) *rsaProof {
 	pf.A = pf.A.Mul(pf.A, c_inv)
 	pf.A = pf.A.Mod(pf.A, pk.N)
 
-	if pf.Verify(pk, chal) == false {
-		panic("rsa proof does not verify")
+	if err := pf.Verify(pk, chal); err != nil {
+		panic(err)
 	}
 
 	return &pf
@@ -148,8 +154,8 @@ func (p *rsaProver) Finish(chal challenge) {
 	p.pf.Z = img.Exp(img, p.sk.D, p.sk.N)
 
 	// check if verify
-	if p.pf.Verify(&p.sk.PublicKey, chal) == false {
-		panic("generated RSA proof does not verify")
+	if err := p.pf.Verify(&p.sk.PublicKey, chal); err != nil {
+		panic(err)
 	}
 }
 

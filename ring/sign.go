@@ -2,8 +2,11 @@ package ring
 
 import (
 	"crypto"
+	"crypto/ecdsa"
 	"crypto/ed25519"
 	"crypto/rsa"
+	"errors"
+	"fmt"
 	"log"
 
 	"golang.org/x/crypto/ssh"
@@ -25,7 +28,7 @@ func setupTranscript(pks []PublicKey, msg []byte) *transcript {
 	return tx
 }
 
-func (sig *Signature) Verify(pks []PublicKey) []byte {
+func (sig *Signature) Verify(pks []PublicKey) ([]byte, error) {
 	// index by fingerprints
 	keyMap := make(map[string]PublicKey)
 	for _, pk := range pks {
@@ -39,61 +42,63 @@ func (sig *Signature) Verify(pks []PublicKey) []byte {
 		if pk, ok := keyMap[fp]; ok {
 			selectPks = append(selectPks, pk)
 		} else {
-			return nil
+			return nil, errors.New("The ring is not a subset of the public keys used to verify")
 		}
 	}
 
 	return sig.VerifyExact(selectPks)
 }
 
-func (sig *Signature) VerifyExact(pks []PublicKey) []byte {
+func (sig *Signature) VerifyExact(pks []PublicKey) ([]byte, error) {
 	// commit to statement (list of public key)
 	tx := setupTranscript(pks, sig.Msg)
 
 	// basic checks
 	if len(sig.Proofs) != len(pks) {
-		return nil
+		return nil, errors.New("Incorrect number of proofs")
 	}
 	if len(sig.Challenges) != len(pks) {
-		return nil
+		return nil, errors.New("Incorrect number of challenges")
 	}
 	if len(sig.Fingerprints) != len(pks) {
-		return nil
+		return nil, errors.New("Incorrect number of fingerprints")
 	}
 
 	// verify every proof
 	for i, pk := range pks {
 		// check fingerprint hint included in signature
 		if pk.FP() != sig.Fingerprints[i] {
-			return nil
+			return nil, errors.New("Fingerprint does not match public key")
 		}
 
 		// pick proof type (based on public key)
 		var pf proof
 		switch pk.pk.Type() {
-		case ssh.KeyAlgoED25519:
+		case ssh.KeyAlgoED25519, ssh.KeyAlgoSKED25519:
 			pf = &ed25519Proof{}
 		case ssh.KeyAlgoRSA:
 			pf = &rsaProof{}
+		case ssh.KeyAlgoECDSA256, ssh.KeyAlgoECDSA384, ssh.KeyAlgoECDSA521, ssh.KeyAlgoSKECDSA256:
+			pf = &ecdsaProof{}
 		default:
-			log.Fatalln("Unsupported key type:", pk.pk.Type())
+			return nil, fmt.Errorf("Unsupported key type: %s", pk.pk.Type())
 		}
 
 		// unmarshal proof
 		if err := pf.Unmarshal(sig.Proofs[i]); err != nil {
-			return nil
+			return nil, err
 		}
 
 		// check that challenge is right size
 		chal := sig.Challenges[i]
 		if !chal.IsValid() {
-			return nil
+			return nil, errors.New("Challenge is invalid (wrong length)")
 		}
 
 		// verify proof against challenge
-		ckey := pk.pk.(ssh.CryptoPublicKey).CryptoPublicKey()
-		if !pf.Verify(ckey, chal) {
-			return nil
+		ckey := toCryptoPublicKey(pk)
+		if err := pf.Verify(ckey, chal); err != nil {
+			return nil, err
 		}
 		pf.Commit(tx)
 	}
@@ -105,9 +110,9 @@ func (sig *Signature) VerifyExact(pks []PublicKey) []byte {
 	}
 
 	if delta.IsZero() {
-		return sig.Msg
+		return sig.Msg, nil
 	} else {
-		return nil
+		return nil, errors.New("Challenges does not sum to zero")
 	}
 }
 
@@ -166,14 +171,16 @@ func Sign(pair KeyPair, pks []PublicKey, msg []byte) Signature {
 			continue
 		}
 
-		ckey := pk.pk.(ssh.CryptoPublicKey).CryptoPublicKey()
 		chal := challenges[i]
+		ckey := toCryptoPublicKey(pk)
 
 		switch pk.pk.Type() {
-		case ssh.KeyAlgoED25519:
+		case ssh.KeyAlgoSKED25519, ssh.KeyAlgoED25519:
 			pfs[i] = ed25519Sim(ckey.(ed25519.PublicKey), chal)
 		case ssh.KeyAlgoRSA:
 			pfs[i] = rsaSim(ckey.(*rsa.PublicKey), chal)
+		case ssh.KeyAlgoSKECDSA256, ssh.KeyAlgoECDSA256, ssh.KeyAlgoECDSA384, ssh.KeyAlgoECDSA521:
+			pfs[i] = ecdsaSim(ckey.(*ecdsa.PublicKey), chal)
 		default:
 			log.Fatalln("Unsupported key type:", pk.pk.Type())
 		}
@@ -219,8 +226,8 @@ func Sign(pair KeyPair, pks []PublicKey, msg []byte) Signature {
 	}
 
 	// check validity of generated signature: sanity check
-	if sig.VerifyExact(pks) == nil {
-		panic("signature does not verify")
+	if _, err := sig.VerifyExact(pks); err != nil {
+		panic(err)
 	}
 
 	return sig

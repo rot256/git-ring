@@ -1,7 +1,13 @@
 package ring
 
 import (
+	"crypto"
+	"crypto/ecdsa"
+	"crypto/ed25519"
+	"errors"
+	"reflect"
 	"strings"
+	"unsafe"
 
 	"golang.org/x/crypto/ssh"
 )
@@ -48,4 +54,46 @@ func PublicKeyFromStr(s string) (PublicKey, error) {
 		pk_ssh: pk_ssh,
 		pk:     pk,
 	}, nil
+}
+
+func toCryptoPublicKey(pk PublicKey) crypto.PublicKey {
+	switch pk.pk.Type() {
+	case ssh.KeyAlgoED25519, ssh.KeyAlgoRSA, ssh.KeyAlgoECDSA256, ssh.KeyAlgoECDSA384, ssh.KeyAlgoECDSA521:
+		return pk.pk.(ssh.CryptoPublicKey).CryptoPublicKey()
+
+	case ssh.KeyAlgoSKECDSA256:
+		// use reflection to access the inner (unexported) ecdsa.PublicKey
+		rs := reflect.ValueOf(pk.pk)
+		rs2 := reflect.New(rs.Type()).Elem()
+		rs2.Set(rs)
+
+		// access the second field
+		rf := reflect.Indirect(rs2).Field(1)
+		rf = reflect.NewAt(rf.Type(), unsafe.Pointer(rf.UnsafeAddr())).Elem()
+
+		// copy the inner value into an ecdsa.PublicKey
+		var inner ecdsa.PublicKey
+		ri := reflect.ValueOf(&inner).Elem()
+		ri.Set(rf)
+		return &inner
+
+	case ssh.KeyAlgoSKED25519:
+		// use reflection to access the inner (unexported) ed25519.PublicKey
+		rs := reflect.ValueOf(pk.pk)
+		rs2 := reflect.New(rs.Type()).Elem()
+		rs2.Set(rs)
+
+		// access the second field
+		rf := reflect.Indirect(rs2).Field(1)
+		rf = reflect.NewAt(rf.Type(), unsafe.Pointer(rf.UnsafeAddr())).Elem()
+
+		// copy the inner value into an ecdsa.PublicKey
+		var inner ed25519.PublicKey
+		ri := reflect.ValueOf(&inner).Elem()
+		ri.Set(rf)
+		return &inner
+
+	default:
+		panic(errors.New("unknown key type"))
+	}
 }

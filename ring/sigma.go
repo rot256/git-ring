@@ -4,7 +4,7 @@ type proof interface {
 	Marshal() []byte
 	Unmarshal([]byte) error
 	Commit(*transcript)
-	Verify(interface{}, challenge) bool
+	Verify(interface{}, challenge) error
 }
 
 type prover interface {

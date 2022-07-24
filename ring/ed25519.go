@@ -9,6 +9,22 @@ import (
 	"filippo.io/edwards25519"
 )
 
+type ed25519Prover struct {
+	r  *edwards25519.Scalar
+	pf ed25519Proof
+	sk ed25519.PrivateKey
+	pk ed25519.PublicKey
+}
+
+type ed25519Proof struct {
+	A *edwards25519.Point
+	Z *edwards25519.Scalar
+}
+
+type ed25519Challenge struct {
+	c edwards25519.Scalar
+}
+
 func ed25519SfromSK(sk ed25519.PrivateKey) *edwards25519.Scalar {
 	// derieve secret from ed25519 secret key
 	if l := len(sk); l != ed25519.PrivateKeySize {
@@ -23,18 +39,6 @@ func ed25519SfromSK(sk ed25519.PrivateKey) *edwards25519.Scalar {
 		panic("ed25519: internal error: setting scalar failed")
 	}
 	return s
-}
-
-type ed25519Prover struct {
-	r  *edwards25519.Scalar
-	pf ed25519Proof
-	sk ed25519.PrivateKey
-	pk ed25519.PublicKey
-}
-
-type ed25519Proof struct {
-	A *edwards25519.Point
-	Z *edwards25519.Scalar
 }
 
 func (pf ed25519Proof) Marshal() []byte {
@@ -63,16 +67,6 @@ func (pf *ed25519Proof) Unmarshal(b []byte) error {
 	return nil
 }
 
-type Ed25519Challenge struct {
-	c edwards25519.Scalar
-}
-
-func (chal *Ed25519Challenge) Set(bytes []byte) {
-	var c_bytes [32]byte
-	copy(c_bytes[:], bytes[:16])
-	chal.c.SetCanonicalBytes(c_bytes[:])
-}
-
 func ed25519RandomScalar() *edwards25519.Scalar {
 	var rBytes [64]byte
 	if _, err := rand.Read(rBytes[:]); err != nil {
@@ -86,7 +80,7 @@ func ed25519RandomScalar() *edwards25519.Scalar {
 	return r
 }
 
-func ed25519Challenge(chal challenge) *edwards25519.Scalar {
+func ed25519NewChallenge(chal challenge) *edwards25519.Scalar {
 	// interpret challenge as 128-bit scalar
 	c, err := (&edwards25519.Scalar{}).SetCanonicalBytes(chal.TakeZero(16, 32))
 	if err != nil {
@@ -100,12 +94,15 @@ func (pf ed25519Proof) Commit(tx *transcript) {
 	tx.Append(pf.A.Bytes())
 }
 
-func (pf ed25519Proof) Verify(pk interface{}, chal challenge) bool {
+func (pf ed25519Proof) Verify(pk interface{}, chal challenge) error {
 	if pf.A == nil || pf.Z == nil {
-		return false
+		return errors.New("Incomplete proof")
 	}
 	A := pf.computeA(pk.(ed25519.PublicKey), chal)
-	return A.Equal(pf.A) == 1
+	if A.Equal(pf.A) != 1 {
+		return errors.New("Recompute commitment does not match")
+	}
+	return nil
 }
 
 func (pf ed25519Proof) computeA(pk ed25519.PublicKey, chal challenge) *edwards25519.Point {
@@ -114,7 +111,7 @@ func (pf ed25519Proof) computeA(pk ed25519.PublicKey, chal challenge) *edwards25
 		panic(err)
 	}
 
-	c := ed25519Challenge(chal)
+	c := ed25519NewChallenge(chal)
 	g := edwards25519.NewGeneratorPoint()
 
 	l := (&edwards25519.Point{}).ScalarMult(pf.Z, g)
@@ -131,6 +128,12 @@ func ed25519Sim(pk ed25519.PublicKey, chal challenge) *ed25519Proof {
 	var pf ed25519Proof
 	pf.Z = ed25519RandomScalar()
 	pf.A = pf.computeA(pk, chal)
+
+	// sanity check
+	if err := pf.Verify(pk, chal); err != nil {
+		panic(err)
+	}
+
 	return &pf
 }
 
@@ -141,13 +144,14 @@ func (p ed25519Prover) Pf() proof {
 func (p *ed25519Prover) Finish(chal challenge) {
 
 	s := ed25519SfromSK(p.sk)
-	c := ed25519Challenge(chal)
+	c := ed25519NewChallenge(chal)
 
 	p.pf.Z = (&edwards25519.Scalar{}).MultiplyAdd(c, s, p.r)
 	p.r = nil
 
-	if p.pf.Verify(p.pk, chal) == false {
-		panic("ed25519 proof does not verify")
+	// sanity check
+	if err := p.pf.Verify(p.pk, chal); err != nil {
+		panic(err)
 	}
 }
 

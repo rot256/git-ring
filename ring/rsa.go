@@ -102,10 +102,6 @@ func rsaSim(pk *rsa.PublicKey, chal challenge) *rsaProof {
 	pf.A = pf.A.Mul(pf.A, c_inv)
 	pf.A = pf.A.Mod(pf.A, pk.N)
 
-	if err := pf.Verify(pk, chal); err != nil {
-		panic(err)
-	}
-
 	return &pf
 }
 
@@ -152,11 +148,6 @@ func (p *rsaProver) Finish(chal challenge) {
 
 	// invert challenge
 	p.pf.Z = img.Exp(img, p.sk.D, p.sk.N)
-
-	// check if verify
-	if err := p.pf.Verify(&p.sk.PublicKey, chal); err != nil {
-		panic(err)
-	}
 }
 
 func (p *rsaProver) Pf() proof {

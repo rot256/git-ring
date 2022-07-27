@@ -10,31 +10,31 @@ import (
 const challengeSize = 32
 
 type challenge struct {
-	bytes []byte
+	Bytes []byte
 }
 
 func (c *challenge) Random() {
-	c.bytes = make([]byte, challengeSize)
-	if _, err := rand.Read(c.bytes[:]); err != nil {
+	c.Bytes = make([]byte, challengeSize)
+	if _, err := rand.Read(c.Bytes[:]); err != nil {
 		panic(err)
 	}
 }
 
 func (c *challenge) Take(n int) []byte {
-	if len(c.bytes) != challengeSize {
+	if len(c.Bytes) != challengeSize {
 		panic("invalid challenge size")
 	}
 
 	// if challenge is big enough just return sub-slice
-	if n <= len(c.bytes) {
-		return c.bytes[:n]
+	if n <= len(c.Bytes) {
+		return c.Bytes[:n]
 	}
 
 	// otherwise expand using HKDF (only used for RSA)
 	out := make([]byte, n)
 	expand := hkdf.New(
 		sha512.New,
-		c.bytes[:],
+		c.Bytes[:],
 		[]byte{},
 		[]byte("challenge-hkdf"),
 	)
@@ -52,16 +52,16 @@ func (c *challenge) TakeZero(n int, len int) []byte {
 }
 
 func (c *challenge) IsValid() bool {
-	return len(c.bytes) == challengeSize
+	return len(c.Bytes) == challengeSize
 }
 
 // not constant time: only used in verification
 func (c *challenge) IsZero() bool {
-	if len(c.bytes) != challengeSize {
+	if len(c.Bytes) != challengeSize {
 		panic("invalid challenge size")
 	}
 	for i := 0; i < challengeSize; i++ {
-		if c.bytes[i] != 0x00 {
+		if c.Bytes[i] != 0x00 {
 			return false
 		}
 	}
@@ -69,11 +69,11 @@ func (c *challenge) IsZero() bool {
 }
 
 func (c *challenge) Add(c1 challenge) {
-	if len(c.bytes) != challengeSize || len(c1.bytes) != challengeSize {
+	if len(c.Bytes) != challengeSize || len(c1.Bytes) != challengeSize {
 		panic("invalid challenge size")
 	}
 
-	for i := range c.bytes {
-		c.bytes[i] ^= c1.bytes[i]
+	for i := range c.Bytes {
+		c.Bytes[i] ^= c1.Bytes[i]
 	}
 }

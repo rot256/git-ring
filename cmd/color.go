@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"runtime"
 )
 
@@ -25,5 +26,13 @@ func init() {
 		colorPurple = ""
 		colorCyan = ""
 		colorWhite = ""
+	}
+}
+
+func colorWarnBool(b bool) {
+	if b {
+		fmt.Print(colorGreen)
+	} else {
+		fmt.Print(colorYellow)
 	}
 }

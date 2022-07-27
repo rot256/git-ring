@@ -244,7 +244,7 @@ func TestSignVerify(t *testing.T) {
 
 			sk, err := ssh.ParseRawPrivateKey([]byte(keys[i].sk))
 			if err != nil {
-				sk = nil
+				sk = nil // -sk keys are not supported
 			}
 
 			pks = append(pks, pk)

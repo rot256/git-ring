@@ -6,7 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/rot256/gruppe/ring"
+	"github.com/rot256/git-ring/ring"
 	"github.com/spf13/cobra"
 )
 
@@ -48,7 +48,7 @@ var verifyCmd = &cobra.Command{
 			exitError(err)
 		}
 
-		fmt.Println("msg:")
+		fmt.Println("Message:")
 		fmt.Println(string(msg))
 	},
 }

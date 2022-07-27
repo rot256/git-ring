@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"bufio"
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -12,63 +11,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/rot256/gruppe/ring"
+	"github.com/rot256/git-ring/ring"
 	"github.com/spf13/cobra"
 )
-
-type githubOrgMember struct {
-	Login string
-}
-
-// TODO: allow supplying credentials to fetch private orgs
-func githubOrganizationUsers(name string) (bool, []string, error) {
-	membersPerPage := 100
-
-	var names []string
-
-	for n := 1; ; n += 1 {
-		url := fmt.Sprintf("https://api.github.com/orgs/%s/members?page=%d&per_page=%d", name, n, membersPerPage)
-		resp, err := http.Get(url)
-
-		if err != nil {
-			return false, []string{}, err
-		}
-
-		// stop if org not found
-		if resp.StatusCode == http.StatusNotFound {
-			return false, []string{}, nil
-		}
-
-		// check for error
-		if resp.StatusCode != http.StatusOK {
-			return false, []string{}, fmt.Errorf("HTTP request failed with: %s", resp.Status)
-		}
-
-		// read response
-		body, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			return false, []string{}, err
-		}
-
-		// deserialize json
-		var members []githubOrgMember
-		if err != nil {
-			return false, []string{}, err
-		}
-		json.Unmarshal(body, &members)
-
-		// add to user names
-		for _, m := range members {
-			names = append(names, m.Login)
-		}
-
-		if len(members) < membersPerPage {
-			break
-		}
-	}
-
-	return true, names, nil
-}
 
 func verbose(cmd *cobra.Command, s ...interface{}) {
 	if enabled, _ := cmd.Flags().GetBool(optVerbose); enabled {
@@ -87,42 +32,6 @@ func exitError(s ...interface{}) {
 		printError(s...)
 	}
 	os.Exit(1)
-}
-
-func colorWarnBool(b bool) {
-	if b {
-		fmt.Print(colorGreen)
-	} else {
-		fmt.Print(colorYellow)
-	}
-}
-
-func loadGithubUser(indent string, name string) []ring.PublicKey {
-	url := "https://github.com/" + name + ".keys"
-	keys, err := fetchKeys(url)
-	if err != nil {
-		exitError("Failed to fetch keys for Github user", name, "err:", err)
-	}
-
-	colorWarnBool(len(keys) > 0)
-	fmt.Printf("%s%s (%d keys)\n", indent, name, len(keys))
-	fmt.Print(colorReset)
-
-	return keys
-}
-
-func loadGitlabUser(indent string, name string) []ring.PublicKey {
-	url := "https://gitlab.com/" + name + ".keys"
-	keys, err := fetchKeys(url)
-	if err != nil {
-		exitError("Failed to fetch keys for Gitlab user", name, "err:", err)
-	}
-
-	colorWarnBool(len(keys) > 0)
-	fmt.Println(" ", len(keys), "keys :", name)
-	fmt.Print(colorReset)
-
-	return keys
 }
 
 func loadUrl(indent string, url string) []ring.PublicKey {
@@ -250,25 +159,7 @@ func fetchKeys(url string) ([]ring.PublicKey, error) {
 	return keys, nil
 }
 
-func FetchAllKeys(urls []string) ([]ring.PublicKey, error) {
-	var keys []ring.PublicKey
-
-	for _, url := range urls {
-		newKeys, err := fetchKeys(url)
-		if err != nil {
-			return keys, err
-		}
-		if len(newKeys) == 0 {
-			log.Fatalln("One of the urls specified holds no keys!")
-		}
-		fmt.Println("Loaded", len(newKeys), "keys from:", url)
-		keys = append(keys, newKeys...)
-	}
-
-	return sortAndDedupKeys(keys), nil
-}
-
-func FindMatches(pks []ring.PublicKey, pairs []ring.EncKeyPair) []ring.EncKeyPair {
+func findMatches(pks []ring.PublicKey, pairs []ring.EncKeyPair) []ring.EncKeyPair {
 	// create lookup
 	index := make(map[string]bool)
 	for _, pk := range pks {
@@ -286,7 +177,7 @@ func FindMatches(pks []ring.PublicKey, pairs []ring.EncKeyPair) []ring.EncKeyPai
 	return matches
 }
 
-func LoadLocalEncKeyPairs() ([]ring.EncKeyPair, error) {
+func loadLocalEncKeyPairs() ([]ring.EncKeyPair, error) {
 	var pairs []ring.EncKeyPair
 
 	// list files in ./ssh directory

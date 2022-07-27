@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/rot256/gruppe/ring"
+	"github.com/rot256/git-ring/ring"
 	"github.com/spf13/cobra"
 	"golang.org/x/crypto/ssh"
 )
@@ -50,13 +50,13 @@ var signCmd = &cobra.Command{
 		}
 
 		// load the (encrypted) secret keys on the local machine
-		pairs, err := LoadLocalEncKeyPairs()
+		pairs, err := loadLocalEncKeyPairs()
 		if err != nil {
 			panic(err)
 		}
 
 		// find matches between ring members and local keys
-		matches := FindMatches(pks, pairs)
+		matches := findMatches(pks, pairs)
 		if len(matches) == 0 {
 			exitError("Error: No matching keys found:\nDid you remember to include yourself in the ring?")
 		}

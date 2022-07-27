@@ -34,7 +34,7 @@ func (tx *transcript) Challenge() challenge {
 
 	// copy hash prefix into challenge
 	var chal challenge
-	chal.bytes = make([]byte, challengeSize)
-	copy(chal.bytes, hsh)
+	chal.Bytes = make([]byte, challengeSize)
+	copy(chal.Bytes, hsh)
 	return chal
 }

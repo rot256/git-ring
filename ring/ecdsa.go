@@ -140,10 +140,6 @@ func (p *ecdsaProver) Finish(chal challenge) {
 
 	// to protect against mistakes erase the blinding
 	p.r = nil
-
-	if err := p.pf.Verify(&p.sk.PublicKey, chal); err != nil {
-		panic(err)
-	}
 }
 
 // Schorr proof

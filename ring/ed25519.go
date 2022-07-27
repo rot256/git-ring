@@ -21,9 +21,9 @@ type ed25519Proof struct {
 	Z *edwards25519.Scalar
 }
 
+// derieve secret from ed25519 secret key
 func ed25519SfromSK(sk ed25519.PrivateKey) *edwards25519.Scalar {
-	// derieve secret from ed25519 secret key
-	if l := len(sk); l != ed25519.PrivateKeySize {
+	if len(sk) != ed25519.PrivateKeySize {
 		panic("ed25519: bad private key length")
 	}
 
@@ -32,7 +32,7 @@ func ed25519SfromSK(sk ed25519.PrivateKey) *edwards25519.Scalar {
 	h := sha512.Sum512(seed)
 	s, err := edwards25519.NewScalar().SetBytesWithClamping(h[:32])
 	if err != nil {
-		panic("ed25519: internal error: setting scalar failed")
+		panic(err)
 	}
 	return s
 }
@@ -125,11 +125,6 @@ func ed25519Sim(pk ed25519.PublicKey, chal challenge) *ed25519Proof {
 	pf.Z = ed25519RandomScalar()
 	pf.A = pf.computeA(pk, chal)
 
-	// sanity check
-	if err := pf.Verify(pk, chal); err != nil {
-		panic(err)
-	}
-
 	return &pf
 }
 
@@ -144,11 +139,6 @@ func (p *ed25519Prover) Finish(chal challenge) {
 
 	p.pf.Z = (&edwards25519.Scalar{}).MultiplyAdd(c, s, p.r)
 	p.r = nil
-
-	// sanity check
-	if err := p.pf.Verify(p.pk, chal); err != nil {
-		panic(err)
-	}
 }
 
 // Schorr proof

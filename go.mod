@@ -1,4 +1,4 @@
-module github.com/rot256/gruppe
+module github.com/rot256/git-ring
 
 go 1.18
 

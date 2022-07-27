@@ -7,20 +7,34 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const appName = "git-ring"
+const appNameCap = "Git-ring"
+const appUrl = "https://github.com/rot256/git-ring"
+
 const optVerbose = "verbose"
 const optMsg = "msg"
 const optSig = "sig"
 const optGithub = "github"
 const optGitlab = "gitlab"
-const optSSHKeys = "keys"
+const optSSHKeys = "ssh-key"
 const optUrls = "url"
 const optAllowEmpty = "allow-empty"
 
+func description() string {
+	s := ""
+	s += "Heterogeneous ring signatures for SSH keys.\n"
+	s += "An easy and private way to prove membership among a set of git users.\n"
+	s += "More info: " + appUrl
+	return s
+}
+
 var rootCmd = &cobra.Command{
-	Use:   "sjak",
-	Short: "Sjak: Easy SSH Ring Signatures",
-	Long:  `/`,
-	Run:   func(cmd *cobra.Command, args []string) {},
+	Use:   appName,
+	Short: appName + ": Easy SSH Ring Signatures",
+	Long:  description(),
+	Run: func(cmd *cobra.Command, args []string) {
+		cmd.Help()
+	},
 }
 
 func init() {

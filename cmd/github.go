@@ -1,13 +1,18 @@
 package cmd
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
 
 	"github.com/rot256/git-ring/ring"
 )
+
+const githubEnvUsername = "GITHUB_USERNAME"
+const githubEnvToken = "GITHUB_TOKEN"
 
 type githubOrgMember struct {
 	Login string
@@ -16,40 +21,60 @@ type githubOrgMember struct {
 
 // TODO: allow supplying credentials to fetch private orgs
 func githubOrganizationUsers(name string) (bool, []string, error) {
+
+	username, ok := os.LookupEnv(githubEnvUsername)
+	basicAuth := ok
+
+	password, ok := os.LookupEnv(githubEnvToken)
+	basicAuth = basicAuth && ok
+
 	membersPerPage := 100
 
 	var names []string
+	var client http.Client
 
 	for n := 1; ; n += 1 {
-		url := fmt.Sprintf("https://api.github.com/orgs/%s/members?page=%d&per_page=%d", name, n, membersPerPage)
-		resp, err := http.Get(url)
-
+		req, err := http.NewRequest(
+			http.MethodGet,
+			fmt.Sprintf("https://api.github.com/orgs/%s/members?page=%d&per_page=%d", name, n, membersPerPage),
+			bytes.NewReader([]byte{}), // empty body
+		)
 		if err != nil {
-			return false, []string{}, err
+			panic(err)
+		}
+
+		// use basic auth (if supplied)
+		if basicAuth {
+			req.SetBasicAuth(username, password)
+		}
+
+		//
+		resp, err := client.Do(req)
+		if err != nil {
+			return false, nil, err
 		}
 
 		// stop if org not found
 		if resp.StatusCode == http.StatusNotFound {
-			return false, []string{}, nil
+			return false, nil, nil
 		}
 
 		// check for error
 		if resp.StatusCode != http.StatusOK {
-			return false, []string{}, fmt.Errorf("HTTP request failed with: %s", resp.Status)
+			return false, nil, fmt.Errorf("HTTP request failed with: %s", resp.Status)
 		}
 
 		// read response
 		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			return false, []string{}, err
+			return false, nil, err
 		}
 
 		// deserialize json
 		var members []githubOrgMember
-		if err != nil {
-			return false, []string{}, err
+		if err := json.Unmarshal(body, &members); err != nil {
+			return false, nil, err
 		}
-		json.Unmarshal(body, &members)
 
 		// add to user names
 		for _, m := range members {

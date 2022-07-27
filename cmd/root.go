@@ -8,7 +8,6 @@ import (
 )
 
 const appName = "git-ring"
-const appNameCap = "Git-ring"
 const appUrl = "https://github.com/rot256/git-ring"
 
 const optVerbose = "verbose"

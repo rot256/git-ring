@@ -1,4 +1,4 @@
-<img src="https://rot256.dev/git-ring-icon.svg" align="right" height="250" width="250"/>
+<img src="https://rot256.dev/git-ring-icon.svg?" align="right" height="250" width="250"/>
 
 
 # Git-Ring; Easy SSH Ring Signatures

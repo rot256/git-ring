@@ -4,10 +4,12 @@ import (
 	"encoding/asn1"
 	"fmt"
 	"os"
+	"path/filepath"
+	"runtime"
 
 	"github.com/rot256/git-ring/ring"
 	"github.com/spf13/cobra"
-	"golang.org/x/crypto/ssh"
+	"golang.org/x/term"
 )
 
 var signCmd = &cobra.Command{
@@ -43,16 +45,34 @@ var signCmd = &cobra.Command{
 
 		if sourcesTotal != sourcesWithKeys && !allowEmpty {
 			printError("Error: Obtained zero keys from one/more sources:")
-			printError("THEY (SHOWN IN YELLOW) WILL NOT BE INCLUDED IN THE RING.")
+			printError("THEY (SHOWN IN " + colorYellow + "YELLOW" + colorRed + ") WILL NOT BE INCLUDED IN THE RING.")
 			printError("Aborting to avoid accidentially excluding an entity from the ring.")
-			printError("If you want to allow this use --" + optAllowEmpty)
+			printError("If you want to allow exlcuding these entities use --" + optAllowEmpty)
 			exitError()
 		}
 
-		// load the (encrypted) secret keys on the local machine
-		pairs, err := loadLocalEncKeyPairs()
+		// list files in ./ssh directory
+		home, err := os.UserHomeDir()
 		if err != nil {
-			panic(err)
+			exitError("Failed to obtain home directory")
+		}
+
+		// load the secret keys on the local machine
+		pairs, err := loadEncKeyPairs(filepath.Join(home, "/.ssh"))
+		if err != nil {
+			exitError("Failed to load local SSH keys:", err)
+		}
+
+		// on windows there are two options:
+		//   1. %USERPROFILE%/.ssh/
+		//   2. %HOMEDRIVE%%HOMEPATH%/.ssh/
+		if runtime.GOOS == "windows" {
+			homeAlt := os.Getenv("HOMEDRIVE") + os.Getenv("HOMEPATH")
+			pairsAlt, err := loadEncKeyPairs(filepath.Join(homeAlt, "/.ssh"))
+			if err != nil {
+				exitError("Failed to load local SSH keys:", err)
+			}
+			pairs = append(pairsAlt, pairsAlt...)
 		}
 
 		// find matches between ring members and local keys
@@ -81,20 +101,43 @@ var signCmd = &cobra.Command{
 		// attempt to use unecrypted secret key
 		var selected *ring.KeyPair
 		for _, pair := range matches {
-			sk, err := ssh.ParseRawPrivateKey([]byte(pair.SKPEM))
+			selected, err = pair.Parse()
 			if err == nil {
-				selected = &ring.KeyPair{
-					PK: pair.PK,
-					SK: sk,
-				}
 				break
 			}
 		}
 
 		// if not unencrypted pair was found, ask user to decrypt
 		if selected == nil {
-			// TODO select and decrypt
-			exitError("Decrypt key")
+			// enumerate matches for the user
+			for i, pair := range matches {
+				fmt.Print(colorBlue)
+				fmt.Println(" [ %d ] : %s\n", i, pair.PK.Name())
+			}
+
+			// prompt the user to select
+			var index int
+			fmt.Print(colorReset)
+			fmt.Print("Select key to decrypt (enter number 0-%d): ", len(matches)-1)
+			_, err := fmt.Scanln(&index)
+			if err != nil {
+				exitError("Faild to read index:", err)
+			}
+			if index < 0 || index >= len(matches) {
+				exitError("Invalid index:", index)
+			}
+
+			// prompt for password
+			passwd, err := term.ReadPassword(int(os.Stdin.Fd()))
+			if err != nil {
+				exitError(err)
+			}
+
+			// attempt decryption
+			selected, err = matches[index].Decrypt(passwd)
+			if err != nil {
+				exitError(err)
+			}
 		}
 
 		// generate ring signature

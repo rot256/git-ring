@@ -40,7 +40,29 @@ func (k *PublicKey) FP() string {
 }
 
 func (k *PublicKey) Name() string {
-	return k.FP() + " (" + k.pk.Type() + ")"
+	return k.pk_ssh // k.FP() + " (" + k.pk.Type() + ")"
+}
+
+func (p *EncKeyPair) Parse() (*KeyPair, error) {
+	sk, err := ssh.ParseRawPrivateKey([]byte(p.SKPEM))
+	if err != nil {
+		return nil, err
+	}
+	return &KeyPair{
+		SK: sk,
+		PK: p.PK,
+	}, nil
+}
+
+func (p *EncKeyPair) Decrypt(passwd []byte) (*KeyPair, error) {
+	sk, err := ssh.ParseRawPrivateKeyWithPassphrase([]byte(p.SKPEM), passwd)
+	if err != nil {
+		return nil, err
+	}
+	return &KeyPair{
+		SK: sk,
+		PK: p.PK,
+	}, nil
 }
 
 func PublicKeyFromStr(s string) (PublicKey, error) {

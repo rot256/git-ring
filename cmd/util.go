@@ -22,9 +22,9 @@ func verbose(cmd *cobra.Command, s ...interface{}) {
 }
 
 func printError(s ...interface{}) {
-	fmt.Print(colorRed)
-	fmt.Println(s...)
-	fmt.Print(colorReset)
+	fmt.Fprint(os.Stderr, colorRed)
+	fmt.Fprintln(os.Stderr, s...)
+	fmt.Fprint(os.Stderr, colorReset)
 }
 
 func exitError(s ...interface{}) {
@@ -45,6 +45,25 @@ func loadUrl(indent string, url string) []ring.PublicKey {
 	fmt.Print(colorReset)
 
 	return keys
+}
+
+func loadPath(path string) []ring.PublicKey {
+	file, err := os.Open(path)
+	if err != nil {
+		exitError("Failed to open file:", path)
+	}
+
+	keyData, err := ioutil.ReadAll(file)
+	if err != nil {
+		exitError("Failed to read file", path, ":", err)
+	}
+
+	pk, err := ring.PublicKeyFromStr(string(keyData))
+	if err != nil {
+		exitError("Failed to read public key from", path, ":", err)
+	}
+
+	return []ring.PublicKey{pk}
 }
 
 func loadPublicKeys(cmd *cobra.Command) (int, int, []ring.PublicKey) {
@@ -102,6 +121,12 @@ func loadPublicKeys(cmd *cobra.Command) (int, int, []ring.PublicKey) {
 	urls, _ := cmd.Flags().GetStringArray(optUrls)
 	for _, url := range urls {
 		addKeys(loadUrl(" ", url))
+	}
+
+	// load keys from disk
+	keyPaths, _ := cmd.Flags().GetStringArray(optSSHKeys)
+	for _, path := range keyPaths {
+		addKeys(loadPath(path))
 	}
 
 	// sort and deuplicate the keys
@@ -177,17 +202,10 @@ func findMatches(pks []ring.PublicKey, pairs []ring.EncKeyPair) []ring.EncKeyPai
 	return matches
 }
 
-func loadLocalEncKeyPairs() ([]ring.EncKeyPair, error) {
+func loadEncKeyPairs(dir string) ([]ring.EncKeyPair, error) {
 	var pairs []ring.EncKeyPair
 
-	// list files in ./ssh directory
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return pairs, err
-	}
-
-	sshDir := filepath.Join(home, "/.ssh")
-	key_files, err := ioutil.ReadDir(sshDir)
+	key_files, err := ioutil.ReadDir(dir)
 	if err != nil {
 		return pairs, err
 	}
@@ -205,14 +223,14 @@ func loadLocalEncKeyPairs() ([]ring.EncKeyPair, error) {
 		}
 
 		// read suspected private key
-		pathSK := filepath.Join(sshDir, entry.Name())
+		pathSK := filepath.Join(dir, entry.Name())
 		skPEM, err := ioutil.ReadFile(pathSK)
 		if err != nil {
 			continue
 		}
 
 		// read corresponding public key
-		pathPK := filepath.Join(sshDir, entry.Name()+".pub")
+		pathPK := filepath.Join(dir, entry.Name()+".pub")
 		pk_data, err := ioutil.ReadFile(pathPK)
 		if err != nil {
 			continue

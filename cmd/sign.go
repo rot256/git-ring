@@ -112,13 +112,13 @@ var signCmd = &cobra.Command{
 			// enumerate matches for the user
 			for i, pair := range matches {
 				fmt.Print(colorBlue)
-				fmt.Println(" [ %d ] : %s\n", i, pair.PK.Name())
+				fmt.Printf(" [ %d ] : %s\n", i, pair.PK.Name())
 			}
 
 			// prompt the user to select
 			var index int
 			fmt.Print(colorReset)
-			fmt.Print("Select key to decrypt (enter number 0-%d): ", len(matches)-1)
+			fmt.Printf("Select key to decrypt (enter number 0-%d): ", len(matches)-1)
 			_, err := fmt.Scanln(&index)
 			if err != nil {
 				exitError("Faild to read index:", err)

@@ -1,35 +1,64 @@
 <img src="https://rot256.dev/git-ring-icon.svg" align="right" height="250" width="250"/>
 
+
 # Git-Ring; Easy SSH Ring Signatures
 
-Cryptographically proving that you belong to a group of git users has never been easier.
+Cryptographically proving that you belong to a group of git(hub/lab) users has never been easier.
 
-**Disclaimer:** I take no responsibility the correctness/security/completeness of this software,
-this software has not undergone a security audit.
+**Disclaimer:** I take no responsibility for the correctness/security/completeness of this software:
+the software has not undergone a security audit and should currently be considered in an alpha state.
 I also do not guarantee that the CLI remains stable, or that the signature format remains backwards compatible.
 
-## Why?
 
-Whistleblowing
+<br>
 
-One of the few places where we actually have a global repository of keys and associated identities.
+## Applications
+
+Git(hub/lab) is one of the few places where we actually have a large repository of identities tied to associated public keys: the list of authorized SSH keys for each user which these platforms make public.
+Git-ring exploits this to anonymously prove membership among a set of users/organizations/repositories on these platforms by using heterogeneous ring signatures.
+
+### Whistleblowing
+
+The primary motivation for ring signatures (e.g. in the seminal work [How to leak a secret](https://people.csail.mit.edu/rivest/pubs/RST01.pdf)
+by Rivest, Shamir and Tauman) is that of whistleblowing: suppose you are a member of an organization (e.g. on Github) 
+and you want to raise an issue either publically or internally.
+You could post your revelations anonymously, but then how do people know that they are not just fabricated by someone with no relation to the organization as a baseless smear campaign? You could also raise your concerns with your name attached, but that might have undesired personal ramifications...
+
+Ring signatures (e.g. git-ring) offers a solution to this dilemma: you can prove that you belong to the organization without revealing your identity.
+e.g. using:
+
+```console
+$ ./git-ring sign --msg "They are doing bad things, I work there." --github EvilCorp
+```
+
+Creates a signature showing that someone within the organization "EvilCorp" created the message, but does not reveal who.
+
+### Designed Verifier Signatures
+
+You can also use git-ring to create signatures that can only be verified by a single entity: 
+since the signature could also be forged by the designed entity it is not convincing to a third party. e.g.
+
+```console
+$ ./git-ring --msg "Do not pass this message on" --github <me> --github <you>
+```
 
 ## Features
 
-- Support for hetrogenous sets of keys: <br>
-  The ring of signers can contain combinations of RSA, Ed25519 and ECDSA keys.
-- Perfectly deniability: <br> Signatures are deniable even if people get access to your private keys and/or break the underlaying crypto in the future.
-- Easily prove membership among Github/Gitlab users (by just supplying the usernames).
-- Easily prove membership of a Github Organization (extension of above).
-- Manually include SSH keys in the ring.
 - Easy to use (see below).
-- Cross platform.
+- Support for hetrogenous sets of keys: <br>
+  The ring of signers can contain combinations of RSA, Ed25519 and ECDSA keys (i.e. all the types supported by Github).
+- Perfectly deniability: <br> 
+- Signatures are deniable even if people get access to your private keys and/or break the underlaying crypto in the future.
+- Easily prove membership among Github/Gitlab users (by supplying the usernames).
+- Easily prove membership of a Github Organization (extension of above).
+- Supports Github credentials to provide access to hidden organizations / private members.
+- Manually include SSH keys in the ring.
 
 ## Example Usage
 
 Git-ring aims to be dead-easy to use and hard to misuse. e.g. running:
 
-```
+```console
 $ ./git-ring sign --msg "testing git-ring" --github WireGuard
 Loading Keys from Different Entities:
 Github:
@@ -50,7 +79,7 @@ Produces a signature on the message "test" proving that the signer ("rot256" in 
 
 The signature can then be verified as follows (the path to the signature is "./ring.sig" by default):
 
-```
+```console
 $ ./git-ring verify --github WireGuard
 Loading Keys from Different Entities:
 Github:
@@ -71,7 +100,7 @@ Note git-ring signatures include the message being signed to simplify usage.
 
 You can also include individual people in the ring, e.g. using:
 
-```
+```console
 $ ./git-ring sign --github rot256 --github torvalds --github gregkh --msg "testing git-ring"
 ```
 
@@ -81,3 +110,10 @@ Proves that one of the following people signed the message "testing git-ring":
 - Linus Torvalds (torvalds).
 - Greg Kroah-Hartman (gregkh).
 
+## Installation
+
+If you have a Go enviroment set up, then simply run:
+
+```console
+$ go install github.com/rot256/git-ring@latest
+```

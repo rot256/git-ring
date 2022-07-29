@@ -3,7 +3,7 @@
 
 # Git-Ring; Easy SSH Ring Signatures
 
-Cryptographically proving that you belong to a group of git(hub/lab) users has never been easier.
+Cryptographically proving that you belong to a group of Git(hub/lab) users has never been easier.
 
 **Disclaimer:** I take no responsibility for the correctness/security/completeness of this software:
 the software has not undergone a security audit and should currently be considered in an alpha state.
@@ -49,7 +49,7 @@ $ ./git-ring --msg "Do not pass this message on" --github <me> --github <you>
   The ring of signers can contain combinations of RSA, Ed25519 and ECDSA keys <br>
   (i.e. all the types supported by Github).
 - Perfectly deniability: <br>
-  Signatures are deniable even if people get access to your private keys and/or break the underlaying crypto in the future.
+  The real signers identity is hidden even if the adversary get access to private keys or break the cryptography.
 - Easily prove membership among Github/Gitlab users (by supplying the usernames).
 - Easily prove membership of a Github Organization (extension of above).
 - Supports Github credentials to provide access to hidden organizations / private members.
@@ -77,7 +77,6 @@ Saved in: ring.sig (1874 bytes)
 ```
 
 Produces a signature on the message "test" proving that the signer ("rot256" in this case) belongs to the [WireGuard organization on Github](https://github.com/orgs/WireGuard/people).
-
 The signature can then be verified as follows (the path to the signature is "./ring.sig" by default):
 
 ```console

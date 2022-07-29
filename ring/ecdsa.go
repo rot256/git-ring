@@ -63,7 +63,7 @@ func ecdsaRandomScalar(pk *ecdsa.PublicKey) *big.Int {
 }
 
 func ecdsaNewChallenge(pk *ecdsa.PublicKey, chal challenge) *big.Int {
-	return (&big.Int{}).SetBytes(chal.Take(16))
+	return chal.Int("schorr-nist-challenge", pk.Curve.Params().N)
 }
 
 func (pf ecdsaProof) Commit(tx *transcript) {

@@ -77,8 +77,9 @@ func ed25519RandomScalar() *edwards25519.Scalar {
 }
 
 func ed25519NewChallenge(chal challenge) *edwards25519.Scalar {
-	// interpret challenge as 128-bit scalar
-	c, err := (&edwards25519.Scalar{}).SetCanonicalBytes(chal.TakeZero(16, 32))
+	c, err := edwards25519.NewScalar().SetUniformBytes(
+		chal.Take("schorr-edwards25519-challenge", 64),
+	)
 	if err != nil {
 		panic(err)
 	}

@@ -26,11 +26,8 @@ type rsaProof struct {
 	Z *big.Int // preimage of (A * C) mod N
 }
 
-// generate an RSA challenge big enough to wrap the modulus (and any e)
 func rsaChallenge(pk *rsa.PublicKey, chal challenge) *big.Int {
-	n := pk.N.BitLen() / 8
-	c := (&big.Int{}).SetBytes(chal.Take(n))
-	return c
+	return chal.Int("rsa-challenge", pk.N)
 }
 
 func randomPreimage(pk *rsa.PublicKey) *big.Int {

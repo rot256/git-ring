@@ -3,6 +3,7 @@ package ring
 import (
 	"crypto/rand"
 	"crypto/sha512"
+	"math/big"
 
 	"golang.org/x/crypto/hkdf"
 )
@@ -20,22 +21,23 @@ func (c *challenge) Random() {
 	}
 }
 
-func (c *challenge) Take(n int) []byte {
+func (c *challenge) Int(tag string, mod *big.Int) *big.Int {
+	bytes := (mod.BitLen() + 7) / 8
+	random := (&big.Int{}).SetBytes(c.Take(tag, bytes*2))
+	return random.Mod(random, mod)
+}
+
+func (c *challenge) Take(tag string, n int) []byte {
 	if len(c.Bytes) != challengeSize {
 		panic("invalid challenge size")
 	}
 
-	// if challenge is big enough just return sub-slice
-	if n <= len(c.Bytes) {
-		return c.Bytes[:n]
-	}
-
-	// otherwise expand using HKDF (only used for RSA)
+	// expand challenge using HKDF
 	out := make([]byte, n)
 	expand := hkdf.New(
 		sha512.New,
 		c.Bytes[:],
-		[]byte{},
+		[]byte(tag),
 		[]byte("challenge-hkdf"),
 	)
 	_, err := expand.Read(out)
@@ -43,12 +45,6 @@ func (c *challenge) Take(n int) []byte {
 		panic(err)
 	}
 	return out
-}
-
-func (c *challenge) TakeZero(n int, len int) []byte {
-	res := make([]byte, len)
-	copy(res, c.Take(n))
-	return res
 }
 
 func (c *challenge) IsValid() bool {

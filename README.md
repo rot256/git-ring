@@ -15,7 +15,7 @@ I also do not guarantee that the CLI remains stable, or that the signature forma
 ## Applications
 
 Git(hub/lab) is one of the few places where we actually have a large repository of identities tied to associated public keys: the list of authorized SSH keys for each user which these platforms make public.
-Git-ring exploits this to anonymously prove membership among a set of users/organizations/repositories on these platforms by using heterogeneous ring signatures.
+Git-ring exploits this to anonymously prove membership among a set of users/organizations/repositories on these platforms using ring signatures.
 
 ### Whistleblowing
 
@@ -46,9 +46,10 @@ $ ./git-ring --msg "Do not pass this message on" --github <me> --github <you>
 
 - Easy to use (see below).
 - Support for hetrogenous sets of keys: <br>
-  The ring of signers can contain combinations of RSA, Ed25519 and ECDSA keys (i.e. all the types supported by Github).
-- Perfectly deniability: <br> 
-- Signatures are deniable even if people get access to your private keys and/or break the underlaying crypto in the future.
+  The ring of signers can contain combinations of RSA, Ed25519 and ECDSA keys <br>
+  (i.e. all the types supported by Github).
+- Perfectly deniability: <br>
+  Signatures are deniable even if people get access to your private keys and/or break the underlaying crypto in the future.
 - Easily prove membership among Github/Gitlab users (by supplying the usernames).
 - Easily prove membership of a Github Organization (extension of above).
 - Supports Github credentials to provide access to hidden organizations / private members.

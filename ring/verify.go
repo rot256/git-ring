@@ -29,9 +29,6 @@ func (sig *Signature) Verify(pks []PublicKey) ([]byte, error) {
 }
 
 func (sig *Signature) VerifyExact(pks []PublicKey) ([]byte, error) {
-	// commit to statement (list of public key)
-	tx := setupTranscript(pks, sig.Msg)
-
 	// basic checks
 	if len(sig.Proofs) != len(pks) {
 		return nil, errors.New("incorrect number of proofs")
@@ -45,6 +42,9 @@ func (sig *Signature) VerifyExact(pks []PublicKey) ([]byte, error) {
 	if sig.Version != version {
 		return nil, errors.New("supported signature version")
 	}
+
+	// commit to statement (list of public key)
+	tx := setupTranscript(pks, sig.Msg)
 
 	// verify every proof
 	for i, pk := range pks {

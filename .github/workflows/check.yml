@@ -32,5 +32,12 @@ jobs:
     - name: Run staticcheck
       run: staticcheck ./...
 
-    - name: Run tests
+    - name: Run unit tests
       run: go test -race -vet=off ./...
+
+    - name: Install dependencies for command utility.
+      run: apt update -y && apt install -y ssh ssh-askpass
+
+    - name: Run integration tests for command utility.
+      run: ./tests.sh
+

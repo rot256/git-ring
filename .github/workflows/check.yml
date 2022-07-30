@@ -8,7 +8,7 @@ on:
 
 jobs:
   check:
-    runs-on: debian:latest
+    runs-on: debian-latest
     steps:
     - uses: actions/checkout@v2
 

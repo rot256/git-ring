@@ -20,7 +20,7 @@ Git-ring exploits this to anonymously prove membership among a set of users/orga
 ### Whistleblowing
 
 The primary motivation for ring signatures (e.g. in the seminal work [How to leak a secret](https://people.csail.mit.edu/rivest/pubs/RST01.pdf)
-by Rivest, Shamir and Tauman) is that of whistleblowing: suppose you are a member of an organization (e.g. on Github) 
+by Rivest, Shamir and Tauman) is that of whistleblowing: suppose you are a member of an organization (e.g. on Github)
 and you want to raise an issue either publically or internally.
 You could post your revelations anonymously, but then how do people know that they are not just fabricated by someone with no relation to the organization as a baseless smear campaign? You could also raise your concerns with your name attached, but that might have undesired personal ramifications...
 
@@ -35,12 +35,15 @@ Creates a signature showing that someone within the organization "EvilCorp" crea
 
 ### Designed Verifier Signatures
 
-You can also use git-ring to create signatures that can only be verified by a single entity: 
-since the signature could also be forged by the designed entity it is not convincing to a third party. e.g.
+You can also use git-ring to create signatures that can only be verified by a single entity:
+by including the verifying party in the ring, the signature could also be forged by the designed verifier
+and hence it is not convincing when passed to a third party. e.g.
 
 ```console
-$ ./git-ring --msg "Do not pass this message on" --github <me> --github <you>
+$ ./git-ring --msg "Do not pass this on" --github <me> --github <you>
 ```
+
+Creates a signature on the message "Do not pass this on" under the Github user `<me>` which can only be verified by the user `<you>`.
 
 ## Features
 
@@ -54,6 +57,7 @@ $ ./git-ring --msg "Do not pass this message on" --github <me> --github <you>
 - Easily prove membership of a Github Organization (extension of above).
 - Supports Github credentials to provide access to hidden organizations / private members.
 - Manually include SSH keys in the ring.
+- Cross platform.
 
 ## Example Usage
 

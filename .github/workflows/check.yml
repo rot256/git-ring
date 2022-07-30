@@ -8,7 +8,7 @@ on:
 
 jobs:
   check:
-    runs-on: ubuntu-20.04
+    runs-on: debian:latest
     steps:
     - uses: actions/checkout@v2
 
@@ -36,7 +36,7 @@ jobs:
       run: go test -race -vet=off ./...
 
     - name: Install dependencies for command utility.
-      run: apt update -y && apt install -y ssh ssh-askpass
+      run: sudo apt update -y && sudo apt install -y ssh
 
     - name: Run integration tests for command utility.
       run: ./tests.sh

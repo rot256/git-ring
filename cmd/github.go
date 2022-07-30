@@ -21,12 +21,15 @@ type githubOrgMember struct {
 
 // TODO: allow supplying credentials to fetch private orgs
 func githubOrganizationUsers(name string) (bool, []string, error) {
-
-	username, ok := os.LookupEnv(githubEnvUsername)
+	// if token is provided: default to bearer token
+	token, ok := os.LookupEnv(githubEnvToken)
 	basicAuth := ok
+	bearerToken := ok
 
-	password, ok := os.LookupEnv(githubEnvToken)
+	// if username is provided: use basic auth
+	username, ok := os.LookupEnv(githubEnvUsername)
 	basicAuth = basicAuth && ok
+	bearerToken = bearerToken && !ok
 
 	membersPerPage := 100
 
@@ -43,12 +46,17 @@ func githubOrganizationUsers(name string) (bool, []string, error) {
 			panic(err)
 		}
 
+		// request JSON
+		req.Header.Add("content-type", "application/json")
+
 		// use basic auth (if supplied)
 		if basicAuth {
-			req.SetBasicAuth(username, password)
+			req.SetBasicAuth(username, token)
+		} else if bearerToken {
+			req.Header.Add("Authorization", "Bearer "+token)
 		}
 
-		//
+		// send request
 		resp, err := client.Do(req)
 		if err != nil {
 			return false, nil, err

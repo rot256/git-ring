@@ -23,14 +23,14 @@ type rsaProver struct {
 
 type rsaProof struct {
 	A *big.Int // image
-	Z *big.Int // preimage of (A * C) mod N
+	Z *big.Int // preimage of (a + c) mod N
 }
 
 func rsaChallenge(pk *rsa.PublicKey, chal challenge) *big.Int {
 	return chal.Int("rsa-challenge", pk.N)
 }
 
-func randomPreimage(pk *rsa.PublicKey) *big.Int {
+func randomZnElem(pk *rsa.PublicKey) *big.Int {
 	// read random bytes
 	n := pk.N.BitLen() / 8
 	bs := make([]byte, 2*n)
@@ -58,7 +58,6 @@ func (pf *rsaProof) Verify(pki interface{}, chal challenge) error {
 	if pk.N.Cmp(pf.A) != 1 {
 		return errors.New("field A is not canonically encoded in ZZ_N")
 	}
-
 	if pk.N.Cmp(pf.Z) != 1 {
 		return errors.New("field Z is not canonically encoded in ZZ_N")
 	}
@@ -66,15 +65,13 @@ func (pf *rsaProof) Verify(pki interface{}, chal challenge) error {
 	// compute challenge
 	c := rsaChallenge(pk, chal)
 
-	// v1 = z^e
-	v1 := rsaPerm(pk, pf.Z)
+	// img = a + c (image)
+	img := (&big.Int{}).Add(pf.A, c)
+	img = img.Mod(img, pk.N)
 
-	// v2 = A*c
-	v2 := (&big.Int{}).Mul(pf.A, c)
-	v2 = v2.Mod(v2, pk.N)
-
-	if v1.Cmp(v2) != 0 {
-		return errors.New("Challenge is not inverted correctly")
+	// check that \phi(z) = a + c
+	if rsaPerm(pk, pf.Z).Cmp(img) != 0 {
+		return errors.New("challenge is not inverted correctly")
 	}
 
 	return nil
@@ -83,20 +80,16 @@ func (pf *rsaProof) Verify(pki interface{}, chal challenge) error {
 func rsaSim(pk *rsa.PublicKey, chal challenge) *rsaProof {
 	var pf rsaProof
 
-	// sample challenge (offset to invert)
+	// convert challenge to element in Z_N
 	c := rsaChallenge(pk, chal)
 
-	//
-	c_inv := (&big.Int{}).ModInverse(c, pk.N)
-	if c_inv == nil {
-		panic("no inverse exists for c, also, we just factored the modulus...")
-	}
+	// z <- Z_N
+	pf.Z = randomZnElem(pk)
 
-	// Z^e = A * C mod N
-	// A = Z^e * C^{-1}
-	pf.Z = randomPreimage(pk)
+	// phi(z) = a + c mod N
+	// a = phi(z) - c mod N
 	pf.A = rsaPerm(pk, pf.Z)
-	pf.A = pf.A.Mul(pf.A, c_inv)
+	pf.A = pf.A.Sub(pf.A, c)
 	pf.A = pf.A.Mod(pf.A, pk.N)
 
 	return &pf
@@ -127,11 +120,10 @@ func (pf *rsaProof) Marshal() []byte {
 }
 
 func rsaProve(sk *rsa.PrivateKey) *rsaProver {
-	// just sample a random image
+	// sample random Zn elem
+	// (might not be in the range of \phi with negl. prob)
 	var pf rsaProof
-	r := randomPreimage(&sk.PublicKey)
-	pf.A = rsaPerm(&sk.PublicKey, r)
-
+	pf.A = randomZnElem(&sk.PublicKey)
 	return &rsaProver{pf: pf, sk: sk}
 }
 
@@ -140,7 +132,7 @@ func (p *rsaProver) Finish(chal challenge) {
 	c := rsaChallenge(&p.sk.PublicKey, chal)
 
 	// compute challenge image (product of c and A)
-	img := (&big.Int{}).Mul(c, p.pf.A)
+	img := (&big.Int{}).Add(c, p.pf.A)
 	img = img.Mod(img, p.sk.PublicKey.N)
 
 	// invert challenge

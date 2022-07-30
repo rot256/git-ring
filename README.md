@@ -2,10 +2,10 @@
 
 # Git-Ring; Easy SSH Ring Signatures
 
-Anonymously proving that you belong to a group of Github users has never been easier.
+Anonymously proving that you belong to a set of Github users is now easy.
 
 Git(hub/lab) is one of the few places with a large repository of identities tied to associated public keys, namely,
-the list of authorized SSH keys for each user which these platforms make public.
+the list of authorized SSH keys for each user which these platforms make public (e.g. [github.com/rot256.keys](https://github.com/rot256.keys)).
 Git-ring exploits this feature to allow anonymously proving membership among a set of users/organizations/repositories on these platforms using ring signatures (a cryptographic tool) -- without revealing your identity.
 
 **Disclaimer:** Although I aim for this software to be usable and not just a demo, 
@@ -15,24 +15,23 @@ I also do not guarantee that the CLI remains stable, or that the signature forma
 
 ## Applications
 
-A number of privacy-enhancing applications exists for ring signatures.
-
 #### Whistleblowing
 
 The primary motivation for ring signatures (e.g. in the seminal work [How to leak a secret](https://people.csail.mit.edu/rivest/pubs/RST01.pdf)
 by Rivest, Shamir and Tauman) is that of whistleblowing: suppose you are a member of an organization (e.g. on Github)
 and you want to raise an issue either publically or internally.
-You could post your revelations anonymously, but then how do people know that they are not fabrications by someone with no relation to the organization?
-You could also raise your concerns with your name attached, but that might have undesired personal ramifications...
+You could post your revelations anonymously, but how do people know that the claims are not fabrications by someone with no relation to the organization?
+You could also raise your concerns with your name attached, so that people can verify that you belong to the organization, but that might have undesired personal ramifications...
 
 Ring signatures (e.g. git-ring) offers a solution to this dilemma: you can prove that you belong to the organization without revealing your identity.
-e.g. using:
+
+In git-ring, this may look something like this:
 
 ```console
 $ ./git-ring sign --msg "They are doing bad things, I work there." --github EvilCorp
 ```
 
-Creates a signature showing that someone within the organization "EvilCorp" created the message, but does not reveal who.
+Which creates a signature showing that someone within the organization "EvilCorp" created the message, but does not reveal who.
 
 #### Designed Verifier Signatures
 

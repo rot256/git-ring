@@ -41,3 +41,5 @@ jobs:
 
     - name: Run integration tests for command utility.
       run: ./tests.sh
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

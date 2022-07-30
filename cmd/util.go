@@ -41,8 +41,7 @@ func loadUrl(indent string, url string) []ring.PublicKey {
 	}
 
 	colorWarnBool(len(keys) > 0)
-	fmt.Println(" ", len(keys), "keys :", url)
-	fmt.Print(colorReset)
+	fmt.Printf("%s%s (%d keys)%s\n", indent, url, len(keys), colorReset)
 
 	return keys
 }
@@ -86,47 +85,54 @@ func loadPublicKeys(cmd *cobra.Command) (int, int, []ring.PublicKey) {
 	// load github keys
 
 	githubNames, _ := cmd.Flags().GetStringArray(optGithub)
-	if len(githubNames) >= 0 {
-		fmt.Print(colorCyan)
-		fmt.Println("Github:")
-		fmt.Print(colorReset)
-	}
-
-	for _, name := range githubNames {
-		isOrg, members, err := githubOrganizationUsers(name)
-		if err != nil {
-			printError("Failed check for Github org:")
-			exitError(err)
-		}
-
-		if isOrg {
-			fmt.Print(colorPurple)
-			fmt.Println(indent+"Organization:", name)
-			fmt.Print(colorReset)
-			for _, member := range members {
-				addKeys(loadGithubUser(indent+indent, member))
+	if len(githubNames) > 0 {
+		fmt.Print(colorCyan + "Github:" + colorReset + "\n")
+		for _, name := range githubNames {
+			isOrg, members, err := githubOrganizationUsers(name)
+			if err != nil {
+				printError("Failed check for Github org:")
+				exitError(err)
 			}
-		} else {
-			addKeys(loadGithubUser(indent, name))
+
+			if isOrg {
+				fmt.Print(colorPurple)
+				fmt.Println(indent+"Organization:", name)
+				fmt.Print(colorReset)
+				for _, member := range members {
+					addKeys(loadGithubUser(indent+indent, member))
+				}
+			} else {
+				addKeys(loadGithubUser(indent, name))
+			}
 		}
 	}
 
 	// load gitlab keys
 	gitlabNames, _ := cmd.Flags().GetStringArray(optGitlab)
-	for _, name := range gitlabNames {
-		addKeys(loadGitlabUser(" ", name))
+	if len(gitlabNames) > 0 {
+		fmt.Print(colorCyan + "Gitlab:" + colorReset + "\n")
+		for _, name := range gitlabNames {
+			addKeys(loadGitlabUser(indent, name))
+		}
 	}
 
 	// fetch keys from other urls
 	urls, _ := cmd.Flags().GetStringArray(optUrls)
-	for _, url := range urls {
-		addKeys(loadUrl(" ", url))
+	if len(urls) > 0 {
+		fmt.Print(colorCyan + "Urls:" + colorReset + "\n")
+		for _, url := range urls {
+			addKeys(loadUrl(indent, url))
+		}
 	}
 
 	// load keys from disk
 	keyPaths, _ := cmd.Flags().GetStringArray(optSSHKeys)
-	for _, path := range keyPaths {
-		addKeys(loadPath(path))
+	if len(keyPaths) > 0 {
+		fmt.Print(colorCyan + "Files:" + colorReset + "\n")
+		for _, path := range keyPaths {
+			addKeys(loadPath(path))
+			fmt.Print(colorBlue + indent + path + colorReset + "\n")
+		}
 	}
 
 	// sort and deuplicate the keys

@@ -14,7 +14,7 @@ func loadGitlabUser(indent string, name string) []ring.PublicKey {
 	}
 
 	colorWarnBool(len(keys) > 0)
-	fmt.Println(" ", len(keys), "keys :", name)
+	fmt.Printf("%s%s (%d keys)\n", indent, name, len(keys))
 	fmt.Print(colorReset)
 
 	return keys

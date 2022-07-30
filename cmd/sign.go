@@ -12,6 +12,8 @@ import (
 	"golang.org/x/term"
 )
 
+const sshDirectoryEnv = "SSH_DIRECTORY"
+
 var signCmd = &cobra.Command{
 	Use:   "sign",
 	Short: "Generate ring signatures on messages",
@@ -51,28 +53,37 @@ var signCmd = &cobra.Command{
 			exitError()
 		}
 
-		// list files in ./ssh directory
-		home, err := os.UserHomeDir()
-		if err != nil {
-			exitError("Failed to obtain home directory")
+		// list directory to load ssh keys from
+		var sshDirs []string
+		dir, ok := os.LookupEnv(sshDirectoryEnv)
+		if ok {
+			// use
+			sshDirs = append(sshDirs, dir)
+		} else {
+			// list files in ./ssh directory
+			home, err := os.UserHomeDir()
+			if err != nil {
+				exitError("Failed to obtain home directory")
+			}
+			sshDirs = append(sshDirs, filepath.Join(home, "/.ssh"))
+
+			// on windows there are two options:
+			//   1. %USERPROFILE%/.ssh/
+			//   2. %HOMEDRIVE%%HOMEPATH%/.ssh/
+			if runtime.GOOS == "windows" {
+				homeAlt := os.Getenv("HOMEDRIVE") + os.Getenv("HOMEPATH")
+				sshDirs = append(sshDirs, filepath.Join(homeAlt, "/.ssh"))
+			}
 		}
 
-		// load the secret keys on the local machine
-		pairs, err := loadEncKeyPairs(filepath.Join(home, "/.ssh"))
-		if err != nil {
-			exitError("Failed to load local SSH keys:", err)
-		}
-
-		// on windows there are two options:
-		//   1. %USERPROFILE%/.ssh/
-		//   2. %HOMEDRIVE%%HOMEPATH%/.ssh/
-		if runtime.GOOS == "windows" {
-			homeAlt := os.Getenv("HOMEDRIVE") + os.Getenv("HOMEPATH")
-			pairsAlt, err := loadEncKeyPairs(filepath.Join(homeAlt, "/.ssh"))
+		// load pairs for all included directories
+		var pairs []ring.EncKeyPair
+		for _, dir := range sshDirs {
+			ps, err := loadEncKeyPairs(dir)
 			if err != nil {
 				exitError("Failed to load local SSH keys:", err)
 			}
-			pairs = append(pairsAlt, pairsAlt...)
+			pairs = append(pairs, ps...)
 		}
 
 		// find matches between ring members and local keys

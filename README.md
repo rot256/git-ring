@@ -1,23 +1,23 @@
 <img src="https://rot256.dev/git-ring-icon.svg?" align="right" height="250" width="250"/>
 
-
 # Git-Ring; Easy SSH Ring Signatures
 
 Anonymously proving that you belong to a group of Github users has never been easier.
 
-**Disclaimer:** I take no responsibility for the correctness/security/completeness of this software:
+Git(hub/lab) is one of the few places with a large repository of identities tied to associated public keys, namely,
+the list of authorized SSH keys for each user which these platforms make public.
+Git-ring exploits this feature to allow anonymously proving membership among a set of users/organizations/repositories on these platforms using ring signatures (a cryptographic tool) -- without revealing your identity.
+
+**Disclaimer:** Although I aim for this software to be usable and not just a demo, 
+I take no responsibility for the correctness/security/completeness of this software:
 the software has not undergone a security audit and should currently be considered in an alpha state.
 I also do not guarantee that the CLI remains stable, or that the signature format remains backwards compatible.
 
-
-<br>
-
 ## Applications
 
-Git(hub/lab) is one of the few places where we actually have a large repository of identities tied to associated public keys: the list of authorized SSH keys for each user which these platforms make public.
-Git-ring exploits this feature to anonymously prove membership among a set of users/organizations/repositories on these platforms using ring signatures.
+A number of privacy-enhancing applications exists for ring signatures.
 
-### Whistleblowing
+#### Whistleblowing
 
 The primary motivation for ring signatures (e.g. in the seminal work [How to leak a secret](https://people.csail.mit.edu/rivest/pubs/RST01.pdf)
 by Rivest, Shamir and Tauman) is that of whistleblowing: suppose you are a member of an organization (e.g. on Github)
@@ -34,7 +34,7 @@ $ ./git-ring sign --msg "They are doing bad things, I work there." --github Evil
 
 Creates a signature showing that someone within the organization "EvilCorp" created the message, but does not reveal who.
 
-### Designed Verifier Signatures
+#### Designed Verifier Signatures
 
 You can also use git-ring to create signatures that can only be verified by a single entity (i.e. not publicly verifiable):
 by including the verifying party in the ring, the signature could also be forged by the designed verifier
@@ -54,8 +54,8 @@ Creates a signature on the message "Do not pass this on" under the Github user `
   (i.e. all the types supported by Github).
 - Perfectly deniability: <br>
   The real signers identity is hidden even if the adversary get access to private keys or break the cryptography.
-- Easily prove membership among Github/Gitlab users (by supplying the usernames).
-- Easily prove membership of a Github Organization (extension of above).
+- Easily prove membership among Github/Gitlab users.
+- Easily prove membership of a Github Organization.
 - Supports Github credentials to provide access to hidden organizations / private members.
 - Manually include SSH keys in the ring.
 - Cross platform.

@@ -1,14 +1,12 @@
-name: Check
+name: Tests on Linux
 
 on:
   push:
-    branches: [master]
   pull_request:
-    branches: [master]
 
 jobs:
   check:
-    runs-on: debian-latest
+    runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
 
@@ -35,9 +33,11 @@ jobs:
     - name: Run unit tests
       run: go test -race -vet=off ./...
 
+    - name: Build command util
+      run: go build
+
     - name: Install dependencies for command utility.
       run: sudo apt update -y && sudo apt install -y ssh
 
     - name: Run integration tests for command utility.
       run: ./tests.sh
-

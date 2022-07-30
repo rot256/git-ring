@@ -114,6 +114,8 @@ Proves that one of the following people signed the message "testing git-ring":
 - Linus Torvalds (torvalds).
 - Greg Kroah-Hartman (gregkh).
 
+More examples can be found in [the tests for the command-line utility](/tests.sh).
+
 ## Installation
 
 If you have a Go enviroment set up, then simply run:

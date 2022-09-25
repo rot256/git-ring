@@ -1,4 +1,4 @@
-<img src="https://rot256.dev/git-ring-icon.svg?" align="right" width="15%"/>
+<img src="https://rot256.dev/git-ring-icon.svg#new" align="right" width="15%"/>
 
 # Git-Ring; Easy SSH Ring Signatures
 
@@ -8,10 +8,12 @@ Git(hub/lab) is one of the few places with a large repository of identities tied
 the list of authorized SSH keys for each user which these platforms make public (e.g. [github.com/rot256.keys](https://github.com/rot256.keys)).
 Git-ring exploits this feature to allow anonymously proving membership among a set of users/organizations/repositories on these platforms using ring signatures (a cryptographic tool) -- without revealing your identity.
 
-**Disclaimer:** Although I aim for this software to be usable and not just a demo, 
+**Disclaimer:** Although I aim for this software to be usable and not just a demo,
 I take no responsibility for the correctness/security/completeness of this software:
 the software has not undergone a security audit and should currently be considered in an alpha state.
 I also do not guarantee that the CLI remains stable, or that the signature format remains backwards compatible.
+
+There is a [companion post](rot256.dev/post/git-ring) describing how the cryptography in git-ring works.
 
 ## Applications
 

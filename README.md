@@ -13,7 +13,7 @@ I take no responsibility for the correctness/security/completeness of this softw
 the software has not undergone a security audit and should currently be considered in an alpha state.
 I also do not guarantee that the CLI remains stable, or that the signature format remains backwards compatible.
 
-There is a [companion post](rot256.dev/post/git-ring) describing how the cryptography in git-ring works.
+There is a [companion post](https://rot256.dev/post/git-ring) describing how the cryptography in git-ring works.
 
 ## Applications
 

@@ -40,9 +40,6 @@ jobs:
     - name: Build command util
       run: go build -asmflags -trimpath
 
-    - name: Install dependencies for command utility tests.
-      run: sudo apt update -y && sudo apt install -y ssh
-
     - name: Run integration tests for command utility.
       run: ./tests.sh
       env:

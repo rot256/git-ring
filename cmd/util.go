@@ -3,7 +3,7 @@ package cmd
 import (
 	"bufio"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -52,7 +52,7 @@ func loadPath(path string) []ring.PublicKey {
 		exitError("Failed to open file:", path)
 	}
 
-	keyData, err := ioutil.ReadAll(file)
+	keyData, err := io.ReadAll(file)
 	if err != nil {
 		exitError("Failed to read file", path, ":", err)
 	}
@@ -211,7 +211,7 @@ func findMatches(pks []ring.PublicKey, pairs []ring.EncKeyPair) []ring.EncKeyPai
 func loadEncKeyPairs(dir string) ([]ring.EncKeyPair, error) {
 	var pairs []ring.EncKeyPair
 
-	key_files, err := ioutil.ReadDir(dir)
+	key_files, err := os.ReadDir(dir)
 	if err != nil {
 		return pairs, err
 	}
@@ -230,14 +230,14 @@ func loadEncKeyPairs(dir string) ([]ring.EncKeyPair, error) {
 
 		// read suspected private key
 		pathSK := filepath.Join(dir, entry.Name())
-		skPEM, err := ioutil.ReadFile(pathSK)
+		skPEM, err := os.ReadFile(pathSK)
 		if err != nil {
 			continue
 		}
 
 		// read corresponding public key
 		pathPK := filepath.Join(dir, entry.Name()+".pub")
-		pk_data, err := ioutil.ReadFile(pathPK)
+		pk_data, err := os.ReadFile(pathPK)
 		if err != nil {
 			continue
 		}

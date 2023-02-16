@@ -3,7 +3,7 @@ package cmd
 import (
 	"encoding/asn1"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 
 	"github.com/rot256/git-ring/ring"
@@ -26,7 +26,7 @@ var verifyCmd = &cobra.Command{
 			exitError("Failed to open signature file:", err)
 		}
 
-		sigData, err := ioutil.ReadAll(sigFile)
+		sigData, err := io.ReadAll(sigFile)
 		if err != nil {
 			exitError("Failed to read signature file:", err)
 		}

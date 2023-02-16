@@ -1,6 +1,6 @@
 module github.com/rot256/git-ring
 
-go 1.18
+go 1.20
 
 require (
 	filippo.io/edwards25519 v1.0.0 // indirect

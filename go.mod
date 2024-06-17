@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	filippo.io/edwards25519 v1.1.0
-	github.com/spf13/cobra v1.7.0
+	github.com/spf13/cobra v1.8.1
 	golang.org/x/crypto v0.23.0
 	golang.org/x/term v0.20.0
 )
